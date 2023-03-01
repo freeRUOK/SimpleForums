@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/more_login"
+        android:title="登录" />
+
+    <item
+        android:id="@+id/more_thread"
+        android:title="发布新主题" />
+
+    <item
+        android:id="@+id/more_open"
+        android:title="默认浏览器打开" />
+
+    <item
+        android:id="@+id/more_more_collector"
+        android:title="打开我的收藏" />
+
+</menu>

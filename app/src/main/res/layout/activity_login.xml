@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context=".LoginActivity">
+
+    <EditText
+        android:id="@+id/user_name_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+
+        android:hint="用户名：" />
+
+    <EditText
+        android:id="@+id/user_password_text"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:hint="密码："
+        android:inputType="textPassword" />
+
+    <Switch
+        android:id="@+id/password_switch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:checked="false"
+        android:textOff="显示密码"
+        android:textOn="隐藏密码" />
+
+    <Button
+        android:id="@+id/login_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+
+        android:gravity="center"
+        android:text="登录" />
+</LinearLayout>
