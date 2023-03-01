@@ -590,10 +590,13 @@ open class QTForum : Forum() {
     // 蜻蜓社区和争渡网发布新主题
     override fun thread(title: String, message: String, section: MutableSection): Int {
         val forms = mapOf(
-            "title" to title,
+            "subject" to title,
             "message" to message,
             "fid" to section.first.id,
             "typeid1" to section.second.id,
+            "typeid2" to 0,
+            "typeid3" to 0,
+            "typeid4" to 0,
             "auth" to userAuth,
             secKey
         )
@@ -601,9 +604,10 @@ open class QTForum : Forum() {
         val body = Util.fastHttp(url = url, querys = httpForms + forms)
         if (body.isNotEmpty()) {
             val resText = body.toString(Charset.forName(charsetName))
+
             val jsonObj = JSONObject(resText)
             if (jsonObj.getInt("status") == 1) {
-                return jsonObj.getJSONObject("message").getInt("tid")
+                return jsonObj.getJSONObject("message").getJSONObject("thread").getInt("tid")
             }
         }
         return 0

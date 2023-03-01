@@ -12,7 +12,7 @@ import java.io.InputStreamReader
 class LicenseActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        supportActionBar?.title="使用之前"
+        supportActionBar?.title="权限及隐私说明"
         setContentView(R.layout.activity_license)
         // 读取assets目录的readMe.txt文件到textView
         InputStreamReader(assets.open("readMe.txt")).use {
