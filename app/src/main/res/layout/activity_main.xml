@@ -6,6 +6,8 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
+    <include layout="@layout/hide_bar" />
+
     <include layout="@layout/title" />
 
 

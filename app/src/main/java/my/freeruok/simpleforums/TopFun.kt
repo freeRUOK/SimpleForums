@@ -1,12 +1,10 @@
-/* functions.kt */
+/* TopFun.kt */
 // * 2651688427@qq.com
 // 扩展函数定义, 而且这里关联了通用的forums模块和Android平台
 package my.freeruok.simpleforums
 
 import android.content.Intent
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.size
 import java.security.MessageDigest
 import kotlin.concurrent.thread
 
@@ -35,7 +33,7 @@ fun Forum.load(activity: MainActivity, isReload: Boolean = true) {
         return
     }
     App.isLoading = true
-    Log.d("thread", "${activity.contentList.size}")
+
     if (isReload) {
         activity.threadList.clear()
         activity.messageAdapter.notifyDataSetInvalidated()
@@ -86,8 +84,8 @@ val Forum.statusText: String
 
 fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
 
-    Log.d("load", "${activity.postList.size}  ${this.currentMessage.post}")
-    if (activity.posts.size >= this.currentMessage.post) {
+
+    if (activity.posts.size >= this.currentMessage.postCount) {
 
         return
     }
@@ -113,6 +111,7 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
             if (messages.isEmpty()) {
                 activity.postListText.text = "加载失败， 请检查你的网络。"
                 App.isLoading = false
+                activity.swipeLayout.isRefreshing = false
                 return@runOnUiThread
             }
 
@@ -124,7 +123,8 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
             } else {
                 activity.postAdapter.notifyDataSetChanged()
             }
-App.isLoading=false
+            App.isLoading = false
+//activity.setTitle()
         }
     }
 }

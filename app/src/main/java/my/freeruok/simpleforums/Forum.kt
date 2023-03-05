@@ -8,7 +8,7 @@
 */
 package my.freeruok.simpleforums
 
-import android.util.Log
+
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -88,7 +88,7 @@ abstract class Forum {
         val body = try {
             Util.fastHttp(url, isMoveable = isMoveable, cookie = cookie)
         } catch (e: Exception) {
-            Log.d("exception", e.stackTraceToString())
+
             byteArrayOf()
         }
         // 开始解析html文档
@@ -121,8 +121,8 @@ abstract class Forum {
     }
 
     // 回帖
-    open fun post(content: String): Boolean {
-        return false
+    open fun post(content: String): Message {
+        return Message()
     }
 
     // 获取论坛的所有板块
@@ -165,8 +165,8 @@ class AMForum : Forum() {
                         dateFmt = dateFmt,
                         lastPost = lastPost,
                         lastDateFmt = lastDateFmt,
-                        post = post,
-                        view = view
+                        postCount = post,
+                        viewCount = view
                     )
                 } else {
                     Message()
@@ -242,7 +242,7 @@ class BMForum : Forum() {
         // 错误检查
         if (body.isNotEmpty()) {
             val resText = body.toString(Charset.forName(charsetName))
-            Log.d("帮忙社区", resText)
+
             val jsonObj = JSONObject(resText)
             if (jsonObj.getInt("code") == 0) {
                 userAuth = auth
@@ -305,8 +305,8 @@ class BMForum : Forum() {
                     content = dataObj.getString("title"),
                     author = dataObj.getString("userName"),
                     dateFmt = dataObj.getString("createTimeCn"),
-                    post = dataObj.getInt("replyCount") + 1,
-                    view = dataObj.getInt("viewCount")
+                    postCount = dataObj.getInt("replyCount") + 1,
+                    viewCount = dataObj.getInt("viewCount")
                 )
             } else {
                 Message(
@@ -322,7 +322,7 @@ class BMForum : Forum() {
     }
 
     // 回帖
-    override fun post(content: String): Boolean {
+    override fun post(content: String): Message {
         val url = "${baseURL}api/reply"
         val forms = mapOf<String, Any>(
             "body" to content,
@@ -337,10 +337,16 @@ class BMForum : Forum() {
         )
         if (body.isNotEmpty()) {
             val jsonObj = JSONObject(body.toString(Charset.forName(charsetName)))
-            return jsonObj.getInt("code") == 0
-        } else {
-            return false
+            if (jsonObj.getInt("code") == 0) {
+                return Message(
+                    content = content,
+                    author = userName,
+                    dateFmt = "刚刚",
+                    floor = currentMessage.postCount + 1
+                )
+            }
         }
+        return Message()
     }
 
     // 获取论坛所有板块
@@ -395,7 +401,7 @@ class BMForum : Forum() {
             "mediaPrice" to -1,
             "attachmentPrice" to -1
         )
-        val url = "${baseURL}post"
+        val url = "${baseURL}api/post"
         val body = Util.fastHttp(
             url = url,
             querys = forms,
@@ -404,6 +410,7 @@ class BMForum : Forum() {
         )
         if (body.isNotEmpty()) {
             val resText = body.toString(Charset.forName(charsetName))
+
             val jsonObj = JSONObject(resText)
             if (jsonObj.getInt("code") == 0) {
                 return jsonObj.getInt("data")
@@ -417,6 +424,7 @@ class BMForum : Forum() {
 open class QTForum : Forum() {
     override val name: String = "蜻蜓社区"
     override val baseURL: String = "http://www.qt.hk/"
+
     // 强制登录
     override val isForce: Boolean = true
 
@@ -427,6 +435,7 @@ open class QTForum : Forum() {
         "format" to "json",
     )
     open val secKey = "seckey" to "7056ea52c2ed298d1c0e26bd0dedf023c18322ef"
+
     // 蜻蜓社区要求密码的md5值， 而争渡网不需要
     open val isMD5Password: Boolean = true
 
@@ -494,7 +503,7 @@ open class QTForum : Forum() {
     // 解析蜻蜓社区和争渡网楼层
     override fun parsePosts(pageNumber: Int): List<Message> {
         val url = "${baseURL}thread-${currentMessage.id}-page-${pageNumber}.htm"
-        Log.d("url", url)
+
         return parse(subURL = url)
     }
 
@@ -508,20 +517,23 @@ open class QTForum : Forum() {
                     author = dataObj.getString("username"),
                     dateLine = dataObj.getLong("dateline"),
                     dateFmt = dataObj.getString("dateline_fmt"),
-                    post = dataObj.getInt("posts"),
-                    view = dataObj.getInt("views"),
+                    postCount = dataObj.getInt("posts"),
+                    viewCount = dataObj.getInt("views"),
                     lastDate = dataObj.getLong("lastpost"),
                     lastDateFmt = dataObj.getString("lastpost_fmt"),
                     lastPost = dataObj.getString("lastusername")
                 )
             } else {
+                val content = dataObj.getString("message")
+                val links = Jsoup.parse(content).select("a,audio")
                 Message(
                     id = dataObj.getLong("tid"),
-                    content = dataObj.getString("message"),
+                    content = content,
                     author = dataObj.getString("username"),
                     floor = dataObj.getInt("floor"),
                     dateLine = dataObj.getLong("dateline"),
-                    dateFmt = dataObj.getString("dateline_fmt")
+                    dateFmt = dataObj.getString("dateline_fmt"),
+                    sources = links
                 )
             }
         } else {
@@ -530,7 +542,7 @@ open class QTForum : Forum() {
     }
 
     // 蜻蜓社区和争渡网回帖
-    override fun post(content: String): Boolean {
+    override fun post(content: String): Message {
         val url = "${baseURL}post-post.htm"
         val forms = mapOf<String, Any>(
             "tid" to MainActivity.forum.currentMessage.id,
@@ -541,10 +553,15 @@ open class QTForum : Forum() {
         val body = Util.fastHttp(url = url, querys = httpForms + forms)
         if (body.isNotEmpty()) {
             val jsonObj = JSONObject(body.toString(Charset.forName(charsetName)))
-            return jsonObj.getInt("status") == 1
-        } else {
-            return false
+            if (jsonObj.getInt("status") == 1)
+                return Message(
+                    content = content,
+                    author = userName,
+                    dateFmt = "刚刚",
+                    floor = currentMessage.postCount + 1
+                )
         }
+        return Message()
     }
 
     // 获取蜻蜓社区和争渡网论坛所有板块

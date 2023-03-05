@@ -31,6 +31,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         checkLicense()
         Util.init()
+        setHideBar()
         loadForum()
 
         contentList.emptyView = contentListText
@@ -51,8 +52,21 @@ class MainActivity : AppCompatActivity() {
 
     }
 
+    fun setHideBar() {
+        val vibrateSwitch = findViewById<Switch>(R.id.vibrate_switch)
+        vibrateSwitch.setOnCheckedChangeListener { _, isChecked ->
+            Util.vibrateSwitch = if (isChecked) {
+                true
+            } else {
+                false
+            }
+        }
+        vibrateSwitch.isChecked = Util.vibrateSwitch
+    }
+
     fun setContentList() {
         swipeRefresh.setOnRefreshListener {
+            Util.showView(this, findViewById(R.id.main_hide_bar), 15)
             forum.load(this)
         }
         contentList.setOnScrollListener(OnScrollListener())
@@ -76,7 +90,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             if ((!App.isLoading) && firstVisibleItem + visibleItemCount >= totalItemCount) {
 
-                forum.load(this@MainActivity, forum.pageNumber==1)
+                forum.load(this@MainActivity, forum.pageNumber == 1)
             } else {
                 Util.vibrant(longArrayOf(40, 20), intArrayOf(0, 120))
             }
@@ -88,6 +102,7 @@ class MainActivity : AppCompatActivity() {
         super.onPause()
         val id = forumRadioGroup.checkedRadioButtonId
         App.context.getSharedPreferences(USER_DATA, MODE_PRIVATE).edit().putInt("forum_id", id)
+            .putBoolean(VIBRATE_SWITCH, Util.vibrateSwitch)
             .apply()
     }
 
@@ -158,3 +173,4 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
+

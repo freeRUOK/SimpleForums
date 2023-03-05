@@ -4,6 +4,7 @@
 package my.freeruok.simpleforums
 
 import org.jsoup.Jsoup
+import org.jsoup.nodes.Element
 
 data class Message(
     val id: Long = 0L,
@@ -13,17 +14,18 @@ data class Message(
     val floor: Int = 0,
     val dateLine: Long = 0L,
     val dateFmt: String = "",
-    var post: Int = 0,
-    val view: Int = 0,
+    var postCount: Int = 0,
+    val viewCount: Int = 0,
     val lastDate: Long = 0L,
     val lastDateFmt: String = "",
-    val lastPost: String = ""
+    val lastPost: String = "",
+    val sources: List<Element> = listOf()
 ) {
     fun formatThread(): String {
         return StringBuilder().apply {
             append(Jsoup.parse(content).text())
             if (author.isNotEmpty()) {
-                append(" ${view} 次点击 ${post - 1} 次跟帖， ")
+                append(" ${viewCount} 次点击 ${postCount - 1} 次跟帖， ")
                 append("${author} 发布于 ${dateFmt}, ")
             }
             if (lastPost.isNotEmpty()) {

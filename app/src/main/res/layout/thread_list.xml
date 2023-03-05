@@ -8,4 +8,11 @@
         android:id="@+id/item_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
+
+    <include
+        android:id="@+id/player"
+        layout="@layout/player"
+        android:visibility="gone" />
+
+
 </LinearLayout>

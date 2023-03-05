@@ -7,7 +7,7 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
-import android.util.Log
+
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AlertDialog
@@ -27,7 +27,12 @@ class ThreadActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        supportActionBar?.title = "发表新主题"
+        val titleFmt = if (MainActivity.forum.isOnline) {
+            "在 ${MainActivity.forum.name} 发表新主题， 当前是用户 ${MainActivity.forum.userName}"
+        } else {
+            "在 ${MainActivity.forum.name} 发表新主题， 当前只限暂存草稿， 请登录后在发布"
+        }
+        supportActionBar?.title = titleFmt
         setContentView(R.layout.activity_thread)
         setSections()
         setpostThreadAction()
@@ -63,7 +68,7 @@ class ThreadActivity : AppCompatActivity() {
                 } else {
                     section.first = currentSection
                     spinnerView.contentDescription = section.first.name
-                    Log.d("click", section.toString())
+
                 }
             }
 
@@ -132,7 +137,7 @@ class ThreadActivity : AppCompatActivity() {
                 }
             }
         }
-        Log.d("section-liat", "${section.first.id}, ${section.first.name}")
+
     }
 
     fun setpostThreadAction() {
@@ -168,8 +173,8 @@ class ThreadActivity : AppCompatActivity() {
                     0
                 }
                 this.runOnUiThread {
+                    sendButton.isEnabled = true
                     if (threadId == 0) {
-                        sendButton.isEnabled = true
                         Util.toast("发布失败")
                     } else {
                         titleText.setText("")
@@ -179,8 +184,9 @@ class ThreadActivity : AppCompatActivity() {
                         if (!Util.hideInputMethod(contentText)) {
                             Util.hideInputMethod(titleText)
                         }
-                        val curMessage = Message(id = threadId.toLong())
+                        val curMessage = Message(id = threadId.toLong(), postCount = 1)
                         MainActivity.forum.currentMessage = curMessage
+                        finish()
                         val intent = Intent(this, PostActivity::class.java)
                         startActivity(intent)
                     }

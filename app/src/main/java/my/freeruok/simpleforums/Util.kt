@@ -8,16 +8,17 @@ import android.media.AudioAttributes
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
-import android.util.Log
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import org.json.JSONObject
+import kotlin.concurrent.thread
 
 object Util {
     // 提交http请求
@@ -61,7 +62,7 @@ object Util {
             build()
         }
         val response = client.newCall(request).execute()
-        Log.d("response", "${response.code} ${response.message}")
+
         return if (response.isSuccessful) {
             response.body?.bytes() ?: byteArrayOf()
         } else {
@@ -76,15 +77,19 @@ object Util {
 
     // 震动初始化
     private lateinit var vibrator: Vibrator
+    var vibrateSwitch: Boolean = true
     fun init() {
         if (!this::vibrator.isInitialized) {
             vibrator = App.context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
+        vibrateSwitch = App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE).getBoolean(
+            VIBRATE_SWITCH, true
+        )
     }
 
     // 震动
     public fun vibrant(times: LongArray, strength: IntArray, isRepeat: Boolean = false) {
-        if (vibrator.hasVibrator()) {
+        if (vibrateSwitch && vibrator.hasVibrator()) {
             val r = if (isRepeat) 0 else -1
             val aa = AudioAttributes.Builder()
                 .setContentType(AudioAttributes.USAGE_ALARM)
@@ -109,5 +114,22 @@ object Util {
         val manager =
             App.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         return manager.hideSoftInputFromWindow(view.windowToken, 0)
+    }
+
+    @Volatile
+    private var isShow: Boolean = false
+    fun showView(activity: AppCompatActivity, view: View, second: Int) {
+        if (isShow) {
+            return
+        }
+        isShow = true
+        view.visibility = View.VISIBLE
+        thread {
+            Thread.sleep((second * 1000).toLong())
+            activity.runOnUiThread {
+                view.visibility = View.GONE
+                isShow = false
+            }
+        }
     }
 }

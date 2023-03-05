@@ -6,11 +6,18 @@
     android:orientation="vertical"
     tools:context=".PostActivity">
 
+    <include
+        android:id="@+id/post_layout_title"
+        layout="@layout/title"
+        android:visibility="gone" />
+
+
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/post_swipe_layout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="8">
+
 
         <ListView
             android:id="@+id/post_list"

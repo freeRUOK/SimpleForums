@@ -27,8 +27,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:checked="false"
-        android:textOff="显示密码"
-        android:textOn="隐藏密码" />
+        android:textOff="隐藏密码"
+        android:textOn="显示密码" />
 
     <Button
         android:id="@+id/login_button"

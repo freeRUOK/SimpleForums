@@ -1,9 +1,10 @@
-/*ThreadActivity.kt */
+/*PostActivity.kt */
 // * 2651688427@qq.com
 // * 发布和编辑帖子
 
 package my.freeruok.simpleforums
 
+import android.media.MediaPlayer
 import android.os.Bundle
 import android.widget.AbsListView
 import android.widget.Button
@@ -15,6 +16,10 @@ import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import kotlin.concurrent.thread
 
 class PostActivity : AppCompatActivity() {
+    companion object {
+        val mediaPlayers: MutableList<MediaPlayer> = mutableListOf()
+    }
+
     val posts = mutableListOf<Message>()
     lateinit var postList: ListView
     lateinit var postAdapter: MessageAdapter
@@ -25,6 +30,9 @@ class PostActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_post)
+
+
+
         postListText = findViewById(R.id.post_list_text)
         postAdapter = MessageAdapter(posts)
         postList = findViewById(R.id.post_list)
@@ -33,16 +41,12 @@ class PostActivity : AppCompatActivity() {
 
         swipeLayout = findViewById(R.id.post_swipe_layout)
         swipeLayout.setOnRefreshListener {
+            Util.showView(this, findViewById(R.id.post_layout_title), 10)
             MainActivity.forum.loadPosts(this, isReload = true)
         }
         postList.setOnScrollListener(OnScrollListener())
         setSendEventListener()
-
-
-
-
-
-
+        setTitleView()
     }
 
     fun setSendEventListener() {
@@ -55,10 +59,10 @@ class PostActivity : AppCompatActivity() {
         postText.isEnabled = true
 
         postText.addTextChangedListener {
-            if (it != null && it.length <= 5) {
-                sendButton.isEnabled = false
-            } else {
+            if (it != null && it.length >= 5) {
                 sendButton.isEnabled = true
+            } else {
+                sendButton.isEnabled = false
             }
         }
 
@@ -66,17 +70,19 @@ class PostActivity : AppCompatActivity() {
             val content = postText.text.toString().trim()
             sendButton.isEnabled = false
             thread {
-                val success = try {
+                val result = try {
                     MainActivity.forum.post(content)
                 } catch (e: Exception) {
-                    false
+                    Message()
                 }
                 this.runOnUiThread {
                     sendButton.isEnabled = true
-                    if (success) {
+                    if (result.content.isNotEmpty()) {
                         postText.text = ""
                         Util.hideInputMethod(postText)
-                        MainActivity.forum.loadPosts(this)
+                        posts.add(result)
+                        postAdapter.notifyDataSetChanged()
+                        MainActivity.forum.currentMessage.postCount++
                     } else {
                         Util.toast("回复失败！")
                     }
@@ -104,7 +110,30 @@ class PostActivity : AppCompatActivity() {
                 )
 
             } else {
-                Util.vibrant(longArrayOf(40, 20), intArrayOf(0, 120))
+                Util.vibrant(longArrayOf(1, 20), intArrayOf(0, 1))
+            }
+        }
+    }
+
+    fun setTitleView() {
+        val titleText = findViewById<TextView>(R.id.title)
+        titleText.text = if (MainActivity.forum.currentMessage.content.isNotEmpty()) {
+            "${MainActivity.forum.currentMessage.content} - 来自： ${MainActivity.forum.name}"
+        } else {
+            "新发主题 - 来自： ${MainActivity.forum.name}"
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mediaPlayers.forEach {
+            try {
+                if (it.isPlaying) {
+                    it.stop()
+                }
+                it.release()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

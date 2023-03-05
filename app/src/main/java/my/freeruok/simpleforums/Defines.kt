@@ -8,3 +8,4 @@ const val REQUEST_CODE_LOGIN = 1
 const val USER_DATA = "user-data"
 const val CONTENT_TYPE_JSON = "Application/json; Charset=UTF-8"
 const val LICENSE_CODE = "LICENSE_CODE"
+const val VIBRATE_SWITCH = "vibrate_switch"

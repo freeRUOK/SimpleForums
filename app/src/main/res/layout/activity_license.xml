@@ -10,8 +10,8 @@
         android:id="@+id/license_text"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:inputType="textImeMultiLine"
-        android:layout_weight="5" />
+        android:layout_weight="5"
+        android:inputType="textImeMultiLine" />
 
     <Button
         android:id="@+id/license_ok_button"
