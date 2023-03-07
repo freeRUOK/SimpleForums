@@ -9,6 +9,7 @@
 package my.freeruok.simpleforums
 
 
+import com.google.android.exoplayer2.MediaItem
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -67,7 +68,7 @@ abstract class Forum {
     open val isOnline: Boolean
         get() = userAuth.isNotEmpty()
 
-    //*记录当前主题， 比如用户打开某个主题帖的时候获取它的详细楼层
+    //*记录当前用户浏览的主题， 比如用户打开某个主题帖的时候获取它的详细楼层
     open var currentMessage = Message()
 
     //* 用户登录默认实现
@@ -88,7 +89,6 @@ abstract class Forum {
         val body = try {
             Util.fastHttp(url, isMoveable = isMoveable, cookie = cookie)
         } catch (e: Exception) {
-
             byteArrayOf()
         }
         // 开始解析html文档
@@ -120,19 +120,45 @@ abstract class Forum {
         return parse(subURL = url)
     }
 
-    // 回帖
+    // 回帖， 爱盲论坛
     open fun post(content: String): Message {
         return Message()
     }
 
-    // 获取论坛的所有板块
+    // 获取论坛的所有板块， 爱盲论坛
     open fun section(): Array<Section> {
         return arrayOf<Section>()
     }
 
-    // 发布新主题, 成功返回主题ID， 失败返回0
+    // 发布新主题, 成功返回主题ID， 失败返回0， 爱盲论坛
     open fun thread(title: String, message: String, section: MutableSection): Int {
         return 0
+    }
+
+    // 生成媒体项目
+    open fun buildMediaItems(mediaData: Any): List<MediaItem> {
+        if (mediaData is Element) {
+            return mediaData.select("audio,video").map {
+                MediaItem.Builder().run {
+                    val url = it.attr("src")
+                    if (url.isNotEmpty()) {
+                        setUri(url)
+                    } else {
+                        val source = it.select("source")
+                        if (source.isNotEmpty()) {
+                            setUri(source[0].attr("src"))
+                        }
+                    }
+                    if (it.text().isNotEmpty()) {
+                        setTag(it.text())
+                    } else {
+                        setTag(name)
+                    }
+                    build()
+                }
+            }
+        }
+        return listOf()
     }
 }
 
@@ -142,7 +168,7 @@ class AMForum : Forum() {
     override val baseURL: String = "https://www.aimang.net/"
     override val charsetName: String = "gbk"
 
-    //* 生成Message对象， 在parse函数里调用， 这个函数可以说是整个parse函数的解析规则
+    //* 生成Message对象， 在parse函数里调用， 这个函数可以说是整个parse函数的解析规则， 爱盲论坛
     override val build: (Any, Boolean) -> Message = { dataObj, isSub ->
         if (dataObj is Element) {
             // 解析主题, 参看爱盲论坛的html源代码
@@ -173,10 +199,17 @@ class AMForum : Forum() {
                 }
             } else {
                 // 解析楼层
-                val (content) = dataObj.select(".t_f").map { it.text() }
+                val mainBody = dataObj.select(".t_f")
+                val content = mainBody[0].text()
+                val mediaItems = buildMediaItems(mainBody[0])
                 val (author) = dataObj.select(".authi").map { it.text() }
                 val (dateFmt) = dataObj.select("span[title]").map { it.text() }
-                Message(content = content, author = author, dateFmt = dateFmt)
+                Message(
+                    content = content,
+                    author = author,
+                    dateFmt = dateFmt,
+                    mediaItems = mediaItems
+                )
             }
         } else {
             Message()
@@ -313,7 +346,8 @@ class BMForum : Forum() {
                     content = dataObj.getString("body"),
                     author = dataObj.getString("userName"),
                     dateFmt = dataObj.getString("createTime"),
-                    floor = dataObj.getInt("floor") + 1
+                    floor = dataObj.getInt("floor") + 1,
+                    mediaItems = buildMediaItems(dataObj)
                 )
             }
         } else {
@@ -417,6 +451,44 @@ class BMForum : Forum() {
             }
         }
         return 0
+    }
+
+    override fun buildMediaItems(mediaData: Any): List<MediaItem> {
+        if (mediaData is JSONObject) {
+            val mediaItems = mutableListOf<MediaItem>()
+            val ele = Jsoup.parse(mediaData.getString("body")).root()
+            mediaItems += super.buildMediaItems(ele)
+            arrayOf("audioList", "videoList").forEach {
+                if (mediaData.has(it)) {
+                    mediaItems += parseMediaData(mediaData.getJSONArray(it), "fileName", "desc")
+                }
+            }
+            return mediaItems
+        }
+        return listOf()
+    }
+
+    private fun parseMediaData(mediaDate: JSONArray, vararg keywords: String): List<MediaItem> {
+        val results = mutableListOf<MediaItem>()
+        for (i in 0 until mediaDate.length()) {
+            val dat = mediaDate.getJSONObject(i)
+            if (!dat.getBoolean("isPaid")) {
+                for (kw in keywords) {
+                    try {
+                        val mi = MediaItem.Builder().run {
+                            setTag(dat.getString(kw))
+                            setUri(dat.getString("url"))
+                            build()
+                        }
+                        results.add(mi)
+                        break
+                    } catch (e: JSONException) {
+                        continue
+                    }
+                }
+            }
+        }
+        return results
     }
 }
 
@@ -525,7 +597,7 @@ open class QTForum : Forum() {
                 )
             } else {
                 val content = dataObj.getString("message")
-                val links = Jsoup.parse(content).select("a,audio")
+                val mediaItems = buildMediaItems(Jsoup.parse(content).root())
                 Message(
                     id = dataObj.getLong("tid"),
                     content = content,
@@ -533,7 +605,7 @@ open class QTForum : Forum() {
                     floor = dataObj.getInt("floor"),
                     dateLine = dataObj.getLong("dateline"),
                     dateFmt = dataObj.getString("dateline_fmt"),
-                    sources = links
+                    mediaItems = mediaItems
                 )
             }
         } else {
@@ -569,7 +641,8 @@ open class QTForum : Forum() {
     // 详细参看相关网站返回的json数据
     override fun section(): Array<Section> {
         val forms = mapOf("auth" to userAuth)
-        val body = Util.fastHttp(url = "${baseURL}index-forumlist.htm", querys = httpForms + forms)
+        val body =
+            Util.fastHttp(url = "${baseURL}index-forumlist.htm", querys = httpForms + forms)
         if (body.isNotEmpty()) {
             val resText = body.toString(Charset.forName(charsetName))
             val jsonObj = JSONObject(resText)

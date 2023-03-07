@@ -3,8 +3,8 @@
 // 一条论坛贴文
 package my.freeruok.simpleforums
 
+import com.google.android.exoplayer2.MediaItem
 import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
 
 data class Message(
     val id: Long = 0L,
@@ -19,7 +19,7 @@ data class Message(
     val lastDate: Long = 0L,
     val lastDateFmt: String = "",
     val lastPost: String = "",
-    val sources: List<Element> = listOf()
+    val mediaItems: List<MediaItem> = listOf()
 ) {
     fun formatThread(): String {
         return StringBuilder().apply {

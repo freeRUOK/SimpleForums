@@ -4,22 +4,18 @@
 
 package my.freeruok.simpleforums
 
-import android.media.MediaPlayer
 import android.os.Bundle
-import android.widget.AbsListView
-import android.widget.Button
-import android.widget.ListView
-import android.widget.TextView
+import android.view.View
+import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.addTextChangedListener
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.ui.PlayerControlView
 import kotlin.concurrent.thread
 
 class PostActivity : AppCompatActivity() {
-    companion object {
-        val mediaPlayers: MutableList<MediaPlayer> = mutableListOf()
-    }
-
+    lateinit var mPlayer: ExoPlayer
     val posts = mutableListOf<Message>()
     lateinit var postList: ListView
     lateinit var postAdapter: MessageAdapter
@@ -30,8 +26,6 @@ class PostActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_post)
-
-
 
         postListText = findViewById(R.id.post_list_text)
         postAdapter = MessageAdapter(posts)
@@ -54,9 +48,23 @@ class PostActivity : AppCompatActivity() {
             return
         }
         val sendButton = findViewById<Button>(R.id.send_post_button)
-        val postText = findViewById<TextView>(R.id.post_text)
+        val postText = findViewById<EditText>(R.id.post_text)
 
         postText.isEnabled = true
+
+        postList.setOnItemClickListener { parent, view, position, id ->
+            if (Util.showInputMethod(postText)) {
+                val cm = posts.get(position)
+                val floor = if (cm.floor == 1) {
+                    "楼主"
+                } else {
+                    "${cm.floor} 楼"
+                }
+                val fmt = "回${floor}${cm.author}: \n${postText.text.toString()}"
+                postText.setText(fmt)
+                postText.setSelection(fmt.length)
+            }
+        }
 
         postText.addTextChangedListener {
             if (it != null && it.length >= 5) {
@@ -78,7 +86,7 @@ class PostActivity : AppCompatActivity() {
                 this.runOnUiThread {
                     sendButton.isEnabled = true
                     if (result.content.isNotEmpty()) {
-                        postText.text = ""
+                        postText.setText("")
                         Util.hideInputMethod(postText)
                         posts.add(result)
                         postAdapter.notifyDataSetChanged()
@@ -126,15 +134,13 @@ class PostActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        mediaPlayers.forEach {
-            try {
-                if (it.isPlaying) {
-                    it.stop()
-                }
-                it.release()
-            } catch (e: Exception) {
-                e.printStackTrace()
+        MainActivity.forum.currentMessage.pageNumber = 1
+        if (this::mPlayer.isInitialized) {
+            if (mPlayer.isPlaying) {
+                mPlayer.stop()
             }
+            mPlayer.release()
+            findViewById<PlayerControlView>(R.id.player_view).visibility = View.GONE
         }
     }
 }

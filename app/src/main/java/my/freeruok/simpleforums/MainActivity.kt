@@ -39,7 +39,10 @@ class MainActivity : AppCompatActivity() {
         forumRadioGroup.setOnCheckedChangeListener { group, checkedId ->
             loadForum()
             forum.load(this)
+        }
 
+        findViewById<Button>(R.id.start_search_button).setOnClickListener {
+            startActivityForResult(Intent(this, SearchActivity::class.java), REQUEST_CODE_SEARCH)
         }
 
         val moreButton = findViewById<Button>(R.id.more_button)
@@ -113,6 +116,12 @@ class MainActivity : AppCompatActivity() {
                 forum.load(this)
             } else {
                 contentListText.text = "${forum.name}要求用户登录"
+            }
+            REQUEST_CODE_SEARCH -> {
+                val kw = data?.getStringExtra(KEYWORD_STR) ?: ""
+                if (kw.isNotEmpty()) {
+                    Util.toast(kw)
+                }
             }
         }
         super.onActivityResult(requestCode, resultCode, data)

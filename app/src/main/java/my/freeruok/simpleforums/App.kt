@@ -16,6 +16,7 @@ class App : Application() {
         lateinit var context: Context
         var MOD_PRIVATE: Int = 0
 
+        // 阻止重复刷新/加载数据
         @Volatile
         var isLoading: Boolean = false
     }

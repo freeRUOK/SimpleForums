@@ -11,6 +11,7 @@
         android:layout_height="match_parent"
         android:layout_weight="1"
         android:enabled="false"
+        android:focusableInTouchMode="true"
         android:hint="快速回复：" />
 
     <Button

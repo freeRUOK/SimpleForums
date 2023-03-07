@@ -109,12 +109,23 @@ object Util {
         }
     }
 
-    // 空提示
+    // 收起键盘
     fun hideInputMethod(view: View): Boolean {
         val manager =
             App.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
         return manager.hideSoftInputFromWindow(view.windowToken, 0)
     }
+
+    // 展开键盘
+    fun showInputMethod(view: View): Boolean {
+        if (view.requestFocus() && view.requestFocusFromTouch()) {
+            val manager =
+                App.context.getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+            return manager.showSoftInput(view, 0)
+        }
+        return false
+    }
+
 
     @Volatile
     private var isShow: Boolean = false

@@ -4,7 +4,10 @@
 package my.freeruok.simpleforums
 
 import android.content.Intent
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.ui.PlayerControlView
 import java.security.MessageDigest
 import kotlin.concurrent.thread
 
@@ -115,6 +118,30 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
                 return@runOnUiThread
             }
 
+            val mediaSources = messages.filter { it.mediaItems.isNotEmpty() }
+
+            if (mediaSources.isNotEmpty()) {
+
+
+                activity.findViewById<View>(com.google.android.exoplayer2.ui.R.id.exo_repeat_toggle).visibility =
+                    View.GONE
+                activity.findViewById<View>(com.google.android.exoplayer2.ui.R.id.exo_shuffle).visibility =
+                    View.GONE
+                activity.findViewById<View>(com.google.android.exoplayer2.ui.R.id.exo_pause).visibility =
+                    View.GONE
+                val playerView = activity.findViewById<PlayerControlView>(R.id.player_view)
+                if (playerView.visibility == View.GONE) {
+                    activity.mPlayer = ExoPlayer.Builder(activity).build()
+                    playerView.player = activity.mPlayer
+
+                    playerView.visibility = View.VISIBLE
+                }
+                mediaSources.forEach {
+                    it.mediaItems.forEach {
+                        activity.mPlayer.addMediaItem(it)
+                    }
+                }
+            }
             activity.posts += messages
             this.currentMessage.pageNumber++
             if (isReload) {
