@@ -61,7 +61,7 @@ class SearchActivity : AppCompatActivity() {
 
         keywordText.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
-                searchButton.performContextClick()
+                searchButton.performClick()
             }
             false
         }
