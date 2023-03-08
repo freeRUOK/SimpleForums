@@ -29,7 +29,7 @@ fun Forum.startLogin(activity: AppCompatActivity) {
 }
 
 //* 加载论坛主题帖数据
-fun Forum.load(activity: MainActivity, isReload: Boolean = true) {
+fun Forum.load(activity: MainActivity, isReload: Boolean = true, keyword: String = "") {
     if (this.isForce && !this.isOnline) {
         this.startLogin(activity)
 
@@ -44,18 +44,25 @@ fun Forum.load(activity: MainActivity, isReload: Boolean = true) {
         this.pageNumber = 1
     }
 
-
-
     thread {
         val messages = try {
-            this.parse()
+            if (keyword.isEmpty()) {
+                this.parse()
+            } else {
+
+                this.parseSearch(keyword)
+            }
         } catch (e: Exception) {
             listOf()
         }
         activity.runOnUiThread {
             if (messages.isEmpty()) {
 
-                activity.contentListText.text = "加载失败， 请检查你的网络。"
+                activity.contentListText.text = if (keyword.isEmpty()) {
+                    "加载失败， 请检查你的网络。"
+                } else {
+                    "无搜索结果， 更换一个关键字试试"
+                }
                 if (this.pageNumber > 1) {
                     this.pageNumber--
                 }

@@ -8,13 +8,13 @@
 */
 package my.freeruok.simpleforums
 
-
 import com.google.android.exoplayer2.MediaItem
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
+import java.net.URLEncoder
 import java.nio.charset.Charset
 
 //* 所有论坛类的超类
@@ -37,12 +37,10 @@ abstract class Forum {
 
     // 保存用户名和授权码
     fun saveUser(name: String, auth: String) {
-        if (name.isNotEmpty() && auth.isNotEmpty()) {
-            val (_, _, domain) = baseURL.split('/').map { it.replace(".", "_") }
-            App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
-                .edit().putString("${domain}_name", name).putString("${domain}_auth", auth)
-                .apply()
-        }
+        val (_, _, domain) = baseURL.split('/').map { it.replace(".", "_") }
+        App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
+            .edit().putString("${domain}_name", name).putString("${domain}_auth", auth)
+            .apply()
     }
 
     // 恢复用户名和授权码
@@ -77,8 +75,12 @@ abstract class Forum {
     }
 
     //* 主题帖解析器默认实现， 这里是爱盲论坛
-    //* 如果提供了子URL解析该url， 没有提供默认解析最新主题
-    open fun parse(subURL: String = ""): List<Message> {
+    //* 默认解析最新主题
+    open fun parse(
+        subURL: String = "",
+        isSub: Boolean = false,
+        vararg args: Pair<String, Any>
+    ): List<Message> {
         // 生成url
         val url = if (subURL.isNotEmpty()) {
             subURL
@@ -94,7 +96,7 @@ abstract class Forum {
         // 开始解析html文档
         if (body.isNotEmpty()) {
             //选择解析参考值
-            val (contentQuery, subQuery) = if (subURL.isNotEmpty()) {
+            val (contentQuery, subQuery) = if (isSub) {
                 postQuery
             } else {
                 threadQuery
@@ -106,7 +108,7 @@ abstract class Forum {
             if (elements.isNotEmpty()) {
                 return elements[0].select(subQuery).map {
                     // 具体生成Message对象的内容参看具体实现
-                    build(it, subURL.isNotEmpty())
+                    build(it, isSub)
                     //过滤掉没有内容的Message对象 ， 比如主题列表的表头
                 }.filter { it.content.isNotEmpty() }
             }
@@ -117,7 +119,18 @@ abstract class Forum {
     // 解析某一主题
     open fun parsePosts(pageNumber: Int): List<Message> {
         val url = "${baseURL}${currentMessage.url}&page=${pageNumber}"
-        return parse(subURL = url)
+        return parse(subURL = url, isSub = true)
+    }
+
+    protected var keyword: String = ""
+    abstract val searchURL: String
+    fun parseSearch(kw: String): List<Message> {
+        val urlStr = URLEncoder.encode(kw, charsetName)
+        if (keyword != urlStr) {
+            pageNumber = 1
+            keyword = urlStr
+        }
+        return parse(subURL = searchURL, isSub = false, "keyword" to keyword)
     }
 
     // 回帖， 爱盲论坛
@@ -127,7 +140,7 @@ abstract class Forum {
 
     // 获取论坛的所有板块， 爱盲论坛
     open fun section(): Array<Section> {
-        return arrayOf<Section>()
+        return arrayOf()
     }
 
     // 发布新主题, 成功返回主题ID， 失败返回0， 爱盲论坛
@@ -166,6 +179,9 @@ abstract class Forum {
 class AMForum : Forum() {
     override val name: String = "爱盲论坛"
     override val baseURL: String = "https://www.aimang.net/"
+    override val searchURL: String
+        get() = "${baseURL}search.php?mod=forum&searchid=114&orderby=lastpost&ascdesc=desc&searchsubmit=yes&page=${pageNumber}&kw=${keyword}"
+
     override val charsetName: String = "gbk"
 
     //* 生成Message对象， 在parse函数里调用， 这个函数可以说是整个parse函数的解析规则， 爱盲论坛
@@ -221,6 +237,9 @@ class AMForum : Forum() {
 class BMForum : Forum() {
     override val name: String = "帮忙社区"
     override val baseURL: String = "http://bbs.abm365.cn/"
+    override val searchURL: String
+        get() = "${baseURL}api/post/search?keyword=${keyword}&pageSize=20&pageNum=${pageNumber}"
+
     override val threadQuery = ".content" to ".item"
     override val isMoveable: Boolean = true
     override val cookie: MyCookie? = MyCookie()
@@ -288,7 +307,11 @@ class BMForum : Forum() {
     }
 
     // 解析帮忙社区， 逻辑和爱盲一样只是目标从html换成了json
-    override fun parse(subURL: String): List<Message> {
+    override fun parse(
+        subURL: String,
+        isSub: Boolean,
+        vararg args: Pair<String, Any>
+    ): List<Message> {
         val url = if (subURL.isNotEmpty()) {
             subURL
         } else {
@@ -304,11 +327,11 @@ class BMForum : Forum() {
                 try {
                     val list = jsonObj.getJSONObject("data").getJSONArray("list")
                     for (i in 0 until list.length()) {
-                        messages.add(build(list.getJSONObject(i), subURL.isNotEmpty()))
+                        messages.add(build(list.getJSONObject(i), isSub))
                     }
                 } catch (e: JSONException) {
                     val jsonFloor = jsonObj.getJSONObject("data").put("floor", 0)
-                    messages.add(build(jsonFloor, subURL.isNotEmpty()))
+                    messages.add(build(jsonFloor, isSub))
                 }
                 return messages
             }
@@ -319,13 +342,13 @@ class BMForum : Forum() {
     // 解析楼层， 这里还是处理帮忙社区的特殊情况
     override fun parsePosts(pageNumber: Int): List<Message> {
         val piffle = if (pageNumber == 1) {
-            parse(subURL = "${baseURL}api/post/${currentMessage.id}")
+            parse(subURL = "${baseURL}api/post/${currentMessage.id}", isSub = true)
         } else {
             listOf()
         }
         val url =
             "${baseURL}api/reply?postId=${currentMessage.id}&pageNum=${pageNumber}&pageSize=20&authorOnly=false"
-        return piffle + parse(subURL = url)
+        return piffle + parse(subURL = url, isSub = true)
     }
 
     // 构造Message对象
@@ -496,6 +519,8 @@ class BMForum : Forum() {
 open class QTForum : Forum() {
     override val name: String = "蜻蜓社区"
     override val baseURL: String = "http://www.qt.hk/"
+    override val searchURL: String
+        get() = "${baseURL}search-index.htm"
 
     // 强制登录
     override val isForce: Boolean = true
@@ -543,20 +568,28 @@ open class QTForum : Forum() {
     override val threadQuery = "postlist" to "threadlist"
 
     // 解析蜻蜓社区和争渡网
-    override fun parse(subURL: String): List<Message> {
+    override fun parse(
+        subURL: String,
+        isSub: Boolean,
+        vararg args: Pair<String, Any>
+    ): List<Message> {
         val forms: Map<String, String> =
-            mapOf("auth" to userAuth, "page" to pageNumber.toString()) + httpForms
+            mapOf(
+                "auth" to userAuth,
+                "page" to pageNumber.toString()
+            ) + httpForms + args.map { it.first to it.second.toString() }
         val url = if (subURL.isNotEmpty()) {
             subURL
         } else {
             "${baseURL}index-index.htm"
         }
+
         val body = Util.fastHttp(url = url, querys = forms)
         if (body.isNotEmpty()) {
             val jsonObj = JSONObject(body.toString(Charset.forName(charsetName)))
             if (jsonObj.getInt("status") == 1) {
                 val messages: MutableList<Message> = mutableListOf()
-                val itemName = if (subURL.isNotEmpty()) {
+                val itemName = if (isSub) {
                     threadQuery.first
                 } else {
                     threadQuery.second
@@ -564,7 +597,7 @@ open class QTForum : Forum() {
                 val jsonAry = jsonObj.getJSONObject("message").getJSONArray(itemName)
                 for (i in 0 until jsonAry.length()) {
                     val jsonItem = jsonAry.getJSONObject(i)
-                    messages.add(build(jsonItem, subURL.isNotEmpty()))
+                    messages.add(build(jsonItem, isSub))
                 }
                 return messages
             }
@@ -575,8 +608,7 @@ open class QTForum : Forum() {
     // 解析蜻蜓社区和争渡网楼层
     override fun parsePosts(pageNumber: Int): List<Message> {
         val url = "${baseURL}thread-${currentMessage.id}-page-${pageNumber}.htm"
-
-        return parse(subURL = url)
+        return parse(subURL = url, isSub = true)
     }
 
     // 构造Message对象
@@ -714,4 +746,5 @@ class ZDForum : QTForum() {
     )
     override val secKey = "seckey" to "57dfd28547"
     override val isMD5Password: Boolean = false
+
 }

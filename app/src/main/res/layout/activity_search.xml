@@ -11,7 +11,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:hint="关键字：" />
+        android:hint="搜索："
+        android:singleLine="true" />
 
     <Button
         android:id="@+id/clear_keyword_button"
@@ -47,5 +48,13 @@
         android:layout_height="0dp"
         android:layout_weight="8"
         android:text="暂无搜索记录" />
+
+    <Button
+        android:id="@+id/clear_keywords_button"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text="清空搜索记录"
+        android:visibility="gone" />
 
 </LinearLayout>

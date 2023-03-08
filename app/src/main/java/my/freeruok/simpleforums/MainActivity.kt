@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -51,8 +52,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         setContentList()
-        swipeRefresh.isRefreshing = true
-
     }
 
     fun setHideBar() {
@@ -70,6 +69,9 @@ class MainActivity : AppCompatActivity() {
     fun setContentList() {
         swipeRefresh.setOnRefreshListener {
             Util.showView(this, findViewById(R.id.main_hide_bar), 15)
+            if (keyword.isNotEmpty()) {
+                keyword = ""
+            }
             forum.load(this)
         }
         contentList.setOnScrollListener(OnScrollListener())
@@ -93,7 +95,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             if ((!App.isLoading) && firstVisibleItem + visibleItemCount >= totalItemCount) {
 
-                forum.load(this@MainActivity, forum.pageNumber == 1)
+                forum.load(this@MainActivity, forum.pageNumber == 1, keyword = keyword)
             } else {
                 Util.vibrant(longArrayOf(40, 20), intArrayOf(0, 120))
             }
@@ -109,6 +111,7 @@ class MainActivity : AppCompatActivity() {
             .apply()
     }
 
+    var keyword: String = ""
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         when (requestCode) {
             REQUEST_CODE_LOGIN -> if (resultCode == RESULT_OK) {
@@ -120,7 +123,8 @@ class MainActivity : AppCompatActivity() {
             REQUEST_CODE_SEARCH -> {
                 val kw = data?.getStringExtra(KEYWORD_STR) ?: ""
                 if (kw.isNotEmpty()) {
-                    Util.toast(kw)
+                    keyword = kw
+                    forum.load(this, keyword = keyword)
                 }
             }
         }
@@ -156,8 +160,21 @@ class MainActivity : AppCompatActivity() {
         popupMoreMenu.setOnMenuItemClickListener {
             when (it.itemId) {
                 R.id.more_login -> {
-
-                    forum.startLogin(this)
+                    if (forum.isOnline) {
+                        AlertDialog.Builder(this).apply {
+                            setMessage("${forum.name}用户${forum.userName}已经登录。")
+                            setPositiveButton("注销") { _, _ ->
+                                forum.saveUser("", "")
+                                forum.userName = ""
+                                forum.userAuth = ""
+                                statusText.text = forum.statusText
+                            }
+                            setNegativeButton("放弃", { _, _ -> Unit })
+                            show()
+                        }
+                    } else {
+                        forum.startLogin(this)
+                    }
                 }
                 R.id.more_open -> {
                     val intent = Intent(Intent.ACTION_DEFAULT)

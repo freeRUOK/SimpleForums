@@ -126,7 +126,6 @@ object Util {
         return false
     }
 
-
     @Volatile
     private var isShow: Boolean = false
     fun showView(activity: AppCompatActivity, view: View, second: Int) {

@@ -10,17 +10,19 @@
         android:id="@+id/user_name_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:hint="用户名："
 
 
-        android:hint="用户名：" />
+        android:singleLine="true" />
 
     <EditText
         android:id="@+id/user_password_text"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-
         android:hint="密码："
-        android:inputType="textPassword" />
+
+        android:inputType="textPassword"
+        android:singleLine="true" />
 
     <Switch
         android:id="@+id/password_switch"

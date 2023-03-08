@@ -19,7 +19,8 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:hint="帖子标题:" />
+        android:hint="帖子标题:"
+        android:singleLine="true" />
 
     <EditText
         android:id="@+id/thread_content_text"

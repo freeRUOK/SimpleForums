@@ -3,7 +3,7 @@
 
     <item
         android:id="@+id/more_login"
-        android:title="登录" />
+        android:title="登录/注销" />
 
     <item
         android:id="@+id/more_thread"
