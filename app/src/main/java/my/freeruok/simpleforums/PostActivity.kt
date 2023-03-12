@@ -133,7 +133,11 @@ class PostActivity : AppCompatActivity() {
             "新发主题 - 来自： ${MainActivity.forum.name}"
         }
         val collectorButton = findViewById<Button>(R.id.more_button)
-        collectorButton.text = "收藏"
+        collectorButton.text = if (MainActivity.forum.currentMessage.isDatabase) {
+            "更新收藏"
+        } else {
+            "收藏"
+        }
         collectorButton.setOnClickListener {
             it.isEnabled = false
             val postCount = MainActivity.forum.currentMessage.postCount

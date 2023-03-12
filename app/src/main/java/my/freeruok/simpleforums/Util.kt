@@ -164,11 +164,11 @@ object Util {
             ).build()
 
         val result = if (curMessage == null) {
-            dao.messageDao().fastThread(MainActivity.forum.pageNumber * 20 - 1, 20)
+            dao.messageDao().fastThread((MainActivity.forum.pageNumber - 1) * 20, 20)
         } else {
             val tid = curMessage.tid
             val page = curMessage.pageNumber
-            dao.messageDao().fastPost(tid, page * 20 - 1, 20)
+            dao.messageDao().fastPost(tid, (page - 1) * 20, 20)
         }
         return result
     }

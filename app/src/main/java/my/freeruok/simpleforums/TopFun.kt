@@ -50,10 +50,10 @@ fun Forum.load(
 
     thread {
         val messages = try {
-            if (keyword.isEmpty()) {
-                this.parse()
-            } else if (isDatabase) {
+            if (isDatabase) {
                 Util.fastCollector()
+            } else if (keyword.isEmpty()) {
+                this.parse()
             } else {
                 this.parseSearch(keyword)
             }
