@@ -3,23 +3,45 @@
 // 一条论坛贴文
 package my.freeruok.simpleforums
 
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.Ignore
+import androidx.room.PrimaryKey
 import com.google.android.exoplayer2.MediaItem
 import org.jsoup.Jsoup
 
+@Entity(tableName = "MESSAGE_TAB")
 data class Message(
-    val id: Long = 0L,
-    val url: String = "",
-    val content: String = "",
-    val author: String = "",
-    val floor: Int = 0,
-    val dateLine: Long = 0L,
-    val dateFmt: String = "",
+    @PrimaryKey(autoGenerate = true)
+    var id: Long = 0L,
+    @ColumnInfo(name = "tid")
+    var tid: Long = 0L,
+    @ColumnInfo(name = "url")
+    var url: String = "",
+    @ColumnInfo(name = "content")
+    var content: String = "",
+    @ColumnInfo(name = "author")
+    var author: String = "",
+    @ColumnInfo(name = "floor")
+    var floor: Int = 0,
+    @ColumnInfo(name = "date_line")
+    var dateLine: Long = 0L,
+    @ColumnInfo(name = "date_fmt")
+    var dateFmt: String = "",
+    @ColumnInfo(name = "post_count")
     var postCount: Int = 0,
-    val viewCount: Int = 0,
-    val lastDate: Long = 0L,
-    val lastDateFmt: String = "",
-    val lastPost: String = "",
-    val mediaItems: List<MediaItem> = listOf()
+    @ColumnInfo(name = "view_count")
+    var viewCount: Int = 0,
+    @ColumnInfo(name = "is_database")
+    var isDatabase: Boolean = false,
+    @Ignore
+    var lastDate: Long = 0L,
+    @Ignore
+    var lastDateFmt: String = "",
+    @ColumnInfo(name = "last_post")
+    var lastPost: String = "",
+    @Ignore
+    var mediaItems: List<MediaItem> = listOf()
 ) {
     fun formatThread(): String {
         return StringBuilder().apply {
@@ -43,6 +65,7 @@ data class Message(
         return "${auth}${Jsoup.parse(content).text()} 发布于 ${dateFmt}"
     }
 
+    @Ignore
     @Volatile
     var pageNumber: Int = 1
 }

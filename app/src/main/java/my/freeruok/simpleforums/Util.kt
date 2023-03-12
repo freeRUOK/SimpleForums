@@ -12,6 +12,7 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.room.Room
 import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -92,7 +93,7 @@ object Util {
         if (vibrateSwitch && vibrator.hasVibrator()) {
             val r = if (isRepeat) 0 else -1
             val aa = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .setUsage(AudioAttributes.USAGE_ALARM).build()
             if (Build.VERSION.SDK_INT >= 26) {
                 vibrator.vibrate(VibrationEffect.createWaveform(times, strength, r), aa)
@@ -141,5 +142,34 @@ object Util {
                 isShow = false
             }
         }
+    }
+
+    fun addCollects(messages: List<Message>) {
+        val dao =
+            Room.databaseBuilder(
+                App.context,
+                CollectorDatabase::class.java,
+                FORUMS_APP_DATABASE_NAME
+            ).build()
+        dao.messageDao().save(messages)
+
+    }
+
+    fun fastCollector(curMessage: Message? = null): MutableList<Message> {
+        val dao =
+            Room.databaseBuilder(
+                App.context,
+                CollectorDatabase::class.java,
+                FORUMS_APP_DATABASE_NAME
+            ).build()
+
+        val result = if (curMessage == null) {
+            dao.messageDao().fastThread(MainActivity.forum.pageNumber * 20 - 1, 20)
+        } else {
+            val tid = curMessage.tid
+            val page = curMessage.pageNumber
+            dao.messageDao().fastPost(tid, page * 20 - 1, 20)
+        }
+        return result
     }
 }

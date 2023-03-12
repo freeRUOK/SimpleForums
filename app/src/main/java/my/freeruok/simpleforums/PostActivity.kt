@@ -7,11 +7,13 @@ package my.freeruok.simpleforums
 import android.os.Bundle
 import android.view.View
 import android.widget.*
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.addTextChangedListener
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.ui.PlayerControlView
+import java.util.*
 import kotlin.concurrent.thread
 
 class PostActivity : AppCompatActivity() {
@@ -129,6 +131,63 @@ class PostActivity : AppCompatActivity() {
             "${MainActivity.forum.currentMessage.content} - 来自： ${MainActivity.forum.name}"
         } else {
             "新发主题 - 来自： ${MainActivity.forum.name}"
+        }
+        val collectorButton = findViewById<Button>(R.id.more_button)
+        collectorButton.text = "收藏"
+        collectorButton.setOnClickListener {
+            it.isEnabled = false
+            val postCount = MainActivity.forum.currentMessage.postCount
+            var pageNum = 1
+            thread {
+                val messages = MainActivity.forum.parsePosts(pageNum).toMutableList()
+                while (messages.size <= postCount) {
+                    messages += MainActivity.forum.parsePosts(pageNum)
+                    pageNum++
+                }
+                MainActivity.forum.currentMessage.pageNumber = 1
+                val items = mutableMapOf<String, Int>().apply {
+                    messages.forEach {
+                        if (!(it.author in this)) {
+                            this.set(it.author, this.size)
+                        }
+                    }
+                }
+
+                this.runOnUiThread {
+                    it.isEnabled = true
+                    AlertDialog.Builder(this).apply {
+                        setTitle("你需要哪些用户的内容？")
+                        val users = items.keys.toTypedArray()
+                        setMultiChoiceItems(
+                            users,
+                            items.values.map { true }.toBooleanArray()
+                        ) { _, curIndex, isCheck ->
+                            val k = users[curIndex]
+                            if (isCheck) {
+                                items.set(k, curIndex)
+                            } else {
+                                items.set(k, -1)
+                            }
+                        }
+                        setPositiveButton("选好了") { _, _ ->
+                            thread {
+                                val collectors = messages.filter {
+                                    items.containsKey(it.author) && items.get(it.author) != -1
+                                } + MainActivity.forum.currentMessage
+
+                                collectors.forEach {
+                                    it.isDatabase = true
+                                    if (it.dateLine == 0L) {
+                                        it.dateLine = Date().time
+                                    }
+                                }
+                                Util.addCollects(collectors)
+                            }
+                        }
+                        show()
+                    }
+                }
+            }
         }
     }
 

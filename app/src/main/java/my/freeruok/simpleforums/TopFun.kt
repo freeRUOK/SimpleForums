@@ -29,10 +29,14 @@ fun Forum.startLogin(activity: AppCompatActivity) {
 }
 
 //* 加载论坛主题帖数据
-fun Forum.load(activity: MainActivity, isReload: Boolean = true, keyword: String = "") {
-    if (this.isForce && !this.isOnline) {
+fun Forum.load(
+    activity: MainActivity,
+    isReload: Boolean = true,
+    keyword: String = "",
+    isDatabase: Boolean
+) {
+    if (this.isForce && !this.isOnline && (!isDatabase)) {
         this.startLogin(activity)
-
         return
     }
     App.isLoading = true
@@ -48,8 +52,9 @@ fun Forum.load(activity: MainActivity, isReload: Boolean = true, keyword: String
         val messages = try {
             if (keyword.isEmpty()) {
                 this.parse()
+            } else if (isDatabase) {
+                Util.fastCollector()
             } else {
-
                 this.parseSearch(keyword)
             }
         } catch (e: Exception) {
@@ -93,8 +98,6 @@ val Forum.statusText: String
     }
 
 fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
-
-
     if (activity.posts.size >= this.currentMessage.postCount) {
 
         return
@@ -107,12 +110,13 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
         activity.postListText.text = "正在加载或刷新……"
     }
 
-
-
     thread {
-
         val messages = try {
-            this.parsePosts(this.currentMessage.pageNumber)
+            if (!this.currentMessage.isDatabase) {
+                this.parsePosts(this.currentMessage.pageNumber)
+            } else {
+                Util.fastCollector(this.currentMessage)
+            }
         } catch (e: Exception) {
             listOf()
         }

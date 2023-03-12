@@ -184,7 +184,7 @@ class ThreadActivity : AppCompatActivity() {
                         if (!Util.hideInputMethod(contentText)) {
                             Util.hideInputMethod(titleText)
                         }
-                        val curMessage = Message(id = threadId.toLong(), postCount = 1)
+                        val curMessage = Message(tid = threadId.toLong(), postCount = 1)
                         MainActivity.forum.currentMessage = curMessage
                         finish()
                         val intent = Intent(this, PostActivity::class.java)

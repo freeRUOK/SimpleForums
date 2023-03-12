@@ -21,6 +21,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var forumRadioGroup: RadioGroup
     lateinit var statusText: TextView
     lateinit var swipeRefresh: SwipeRefreshLayout
+    private var isDatabase: Boolean = false
 
     companion object {
         lateinit var forum: Forum
@@ -39,7 +40,7 @@ class MainActivity : AppCompatActivity() {
 
         forumRadioGroup.setOnCheckedChangeListener { group, checkedId ->
             loadForum()
-            forum.load(this)
+            forum.load(this, isDatabase = isDatabase)
         }
 
         findViewById<Button>(R.id.start_search_button).setOnClickListener {
@@ -72,7 +73,8 @@ class MainActivity : AppCompatActivity() {
             if (keyword.isNotEmpty()) {
                 keyword = ""
             }
-            forum.load(this)
+            isDatabase = false
+            forum.load(this, isDatabase = isDatabase)
         }
         contentList.setOnScrollListener(OnScrollListener())
         contentList.setOnItemClickListener { parent, view, position, id ->
@@ -95,7 +97,12 @@ class MainActivity : AppCompatActivity() {
         ) {
             if ((!App.isLoading) && firstVisibleItem + visibleItemCount >= totalItemCount) {
 
-                forum.load(this@MainActivity, forum.pageNumber == 1, keyword = keyword)
+                forum.load(
+                    this@MainActivity,
+                    forum.pageNumber == 1,
+                    keyword = keyword,
+                    isDatabase = this@MainActivity.isDatabase
+                )
             } else {
                 Util.vibrant(longArrayOf(40, 20), intArrayOf(0, 120))
             }
@@ -116,7 +123,7 @@ class MainActivity : AppCompatActivity() {
         when (requestCode) {
             REQUEST_CODE_LOGIN -> if (resultCode == RESULT_OK) {
                 statusText.text = forum.statusText
-                forum.load(this)
+                forum.load(this, isDatabase = isDatabase)
             } else {
                 contentListText.text = "${forum.name}要求用户登录"
             }
@@ -124,7 +131,7 @@ class MainActivity : AppCompatActivity() {
                 val kw = data?.getStringExtra(KEYWORD_STR) ?: ""
                 if (kw.isNotEmpty()) {
                     keyword = kw
-                    forum.load(this, keyword = keyword)
+                    forum.load(this, keyword = keyword, isDatabase = isDatabase)
                 }
             }
         }
@@ -185,7 +192,8 @@ class MainActivity : AppCompatActivity() {
                     startActivity(Intent(this, ThreadActivity::class.java))
                 }
                 R.id.more_more_collector -> {
-                    Util.toast("更多功能敬请关注！")
+                    isDatabase = true
+                    forum.load(this, isDatabase = isDatabase)
                 }
             }
             false

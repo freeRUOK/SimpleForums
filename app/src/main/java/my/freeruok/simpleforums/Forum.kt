@@ -342,12 +342,12 @@ class BMForum : Forum() {
     // 解析楼层， 这里还是处理帮忙社区的特殊情况
     override fun parsePosts(pageNumber: Int): List<Message> {
         val piffle = if (pageNumber == 1) {
-            parse(subURL = "${baseURL}api/post/${currentMessage.id}", isSub = true)
+            parse(subURL = "${baseURL}api/post/${currentMessage.tid}", isSub = true)
         } else {
             listOf()
         }
         val url =
-            "${baseURL}api/reply?postId=${currentMessage.id}&pageNum=${pageNumber}&pageSize=20&authorOnly=false"
+            "${baseURL}api/reply?postId=${currentMessage.tid}&pageNum=${pageNumber}&pageSize=20&authorOnly=false"
         return piffle + parse(subURL = url, isSub = true)
     }
 
@@ -357,7 +357,7 @@ class BMForum : Forum() {
             if (!isSub) {
                 // 参看帮忙社区返回的json数据
                 Message(
-                    id = dataObj.getLong("id"),
+                    tid = dataObj.getLong("id"),
                     content = dataObj.getString("title"),
                     author = dataObj.getString("userName"),
                     dateFmt = dataObj.getString("createTimeCn"),
@@ -383,7 +383,7 @@ class BMForum : Forum() {
         val url = "${baseURL}api/reply"
         val forms = mapOf<String, Any>(
             "body" to content,
-            "postId" to currentMessage.id,
+            "postId" to currentMessage.tid,
             "top" to false
         )
         val body = Util.fastHttp(
@@ -607,7 +607,7 @@ open class QTForum : Forum() {
 
     // 解析蜻蜓社区和争渡网楼层
     override fun parsePosts(pageNumber: Int): List<Message> {
-        val url = "${baseURL}thread-${currentMessage.id}-page-${pageNumber}.htm"
+        val url = "${baseURL}thread-${currentMessage.tid}-page-${pageNumber}.htm"
         return parse(subURL = url, isSub = true)
     }
 
@@ -616,7 +616,7 @@ open class QTForum : Forum() {
         if (dataObj is JSONObject) {
             if (!isSub) {
                 Message(
-                    id = dataObj.getLong("tid"),
+                    tid = dataObj.getLong("tid"),
                     content = dataObj.getString("subject"),
                     author = dataObj.getString("username"),
                     dateLine = dataObj.getLong("dateline"),
@@ -631,7 +631,7 @@ open class QTForum : Forum() {
                 val content = dataObj.getString("message")
                 val mediaItems = buildMediaItems(Jsoup.parse(content).root())
                 Message(
-                    id = dataObj.getLong("tid"),
+                    tid = dataObj.getLong("tid"),
                     content = content,
                     author = dataObj.getString("username"),
                     floor = dataObj.getInt("floor"),
@@ -649,7 +649,7 @@ open class QTForum : Forum() {
     override fun post(content: String): Message {
         val url = "${baseURL}post-post.htm"
         val forms = mapOf<String, Any>(
-            "tid" to MainActivity.forum.currentMessage.id,
+            "tid" to MainActivity.forum.currentMessage.tid,
             "message" to content,
             "auth" to userAuth,
             secKey
