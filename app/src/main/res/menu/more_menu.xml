@@ -14,7 +14,15 @@
         android:title="默认浏览器打开" />
 
     <item
-        android:id="@+id/more_more_collector"
+        android:id="@+id/more_more_open_collector"
         android:title="打开我的收藏" />
+
+    <item
+        android:id="@+id/more_more_export_collector"
+        android:title="导出收藏到本地" />
+
+    <item
+        android:id="@+id/more_more_clear_collector"
+        android:title="清空收藏" />
 
 </menu>

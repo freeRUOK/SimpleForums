@@ -16,14 +16,14 @@ import androidx.core.widget.addTextChangedListener
 import kotlin.concurrent.thread
 
 class ThreadActivity : AppCompatActivity() {
-    lateinit var threadSpinner: Spinner
-    lateinit var spinnerAdapter: ArrayAdapter<Section>
+    private lateinit var threadSpinner: Spinner
+    private lateinit var spinnerAdapter: ArrayAdapter<Section>
 
     lateinit var sections: Array<Section>
     val section: MutableSection = MutableSection(Section(), Section())
 
-    lateinit var titleText: EditText
-    lateinit var contentText: EditText
+    private lateinit var titleText: EditText
+    private lateinit var contentText: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,7 +39,7 @@ class ThreadActivity : AppCompatActivity() {
 
     }
 
-    fun setSections() {
+    private fun setSections() {
         threadSpinner = findViewById(R.id.post_select_spinner)
         threadSpinner.setOnItemSelectedListener(object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(
@@ -50,7 +50,7 @@ class ThreadActivity : AppCompatActivity() {
             ) {
 
                 val spinnerView = parent as Spinner
-                val currentSection = sections.get(position)
+                val currentSection = sections[position]
                 if (currentSection.subSections.isNotEmpty()) {
                     AlertDialog.Builder(this@ThreadActivity).apply {
                         setItems(
@@ -58,7 +58,7 @@ class ThreadActivity : AppCompatActivity() {
                             object : DialogInterface.OnClickListener {
                                 override fun onClick(dialog: DialogInterface?, which: Int) {
                                     section.first = currentSection
-                                    section.second = currentSection.subSections.get(which)
+                                    section.second = currentSection.subSections[which]
                                     spinnerView.contentDescription =
                                         "${section.first.name} ${section.second.name}"
                                 }
@@ -140,9 +140,9 @@ class ThreadActivity : AppCompatActivity() {
 
     }
 
-    fun setpostThreadAction() {
-        titleText = findViewById<EditText>(R.id.thread_title_text)
-        contentText = findViewById<EditText>(R.id.thread_content_text)
+    private fun setpostThreadAction() {
+        titleText = findViewById(R.id.thread_title_text)
+        contentText = findViewById(R.id.thread_content_text)
         val sendButton = findViewById<Button>(R.id.send_thread_button)
 
         val editTextChangedListener: (Editable?) -> Unit = {
@@ -195,7 +195,7 @@ class ThreadActivity : AppCompatActivity() {
         }
     }
 
-    fun endEdit() {
+    private fun endEdit() {
         if (titleText.text.isEmpty() && contentText.text.isEmpty()) {
             return
         }

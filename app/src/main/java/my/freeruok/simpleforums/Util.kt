@@ -89,7 +89,7 @@ object Util {
     }
 
     // 震动
-    public fun vibrant(times: LongArray, strength: IntArray, isRepeat: Boolean = false) {
+    fun vibrant(times: LongArray, strength: IntArray, isRepeat: Boolean = false) {
         if (vibrateSwitch && vibrator.hasVibrator()) {
             val r = if (isRepeat) 0 else -1
             val aa = AudioAttributes.Builder()
@@ -104,7 +104,7 @@ object Util {
     }
 
     // 停止震动
-    public fun stopVibrant() {
+    fun stopVibrant() {
         if (vibrator.hasVibrator()) {
             vibrator.cancel()
         }
@@ -152,7 +152,6 @@ object Util {
                 FORUMS_APP_DATABASE_NAME
             ).build()
         dao.messageDao().save(messages)
-
     }
 
     fun fastCollector(curMessage: Message? = null): MutableList<Message> {
@@ -171,5 +170,11 @@ object Util {
             dao.messageDao().fastPost(tid, (page - 1) * 20, 20)
         }
         return result
+    }
+
+    // 清空数据，  *注意完全从本地删除所有记录
+    fun clearCollector() {
+        Room.databaseBuilder(App.context, CollectorDatabase::class.java, FORUMS_APP_DATABASE_NAME)
+            .build().messageDao().clear()
     }
 }

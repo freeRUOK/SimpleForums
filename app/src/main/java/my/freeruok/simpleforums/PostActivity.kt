@@ -19,7 +19,7 @@ import kotlin.concurrent.thread
 class PostActivity : AppCompatActivity() {
     lateinit var mPlayer: ExoPlayer
     val posts = mutableListOf<Message>()
-    lateinit var postList: ListView
+    private lateinit var postList: ListView
     lateinit var postAdapter: MessageAdapter
     lateinit var postListText: TextView
     lateinit var swipeLayout: SwipeRefreshLayout
@@ -45,7 +45,7 @@ class PostActivity : AppCompatActivity() {
         setTitleView()
     }
 
-    fun setSendEventListener() {
+    private fun setSendEventListener() {
         if (!MainActivity.forum.isOnline) {
             return
         }
@@ -54,15 +54,15 @@ class PostActivity : AppCompatActivity() {
 
         postText.isEnabled = true
 
-        postList.setOnItemClickListener { parent, view, position, id ->
+        postList.setOnItemClickListener { _, _, position, _ ->
             if (Util.showInputMethod(postText)) {
-                val cm = posts.get(position)
+                val cm = posts[position]
                 val floor = if (cm.floor == 1) {
                     "楼主"
                 } else {
                     "${cm.floor} 楼"
                 }
-                val fmt = "回${floor}${cm.author}: \n${postText.text.toString()}"
+                val fmt = "回${floor}${cm.author}: \n${postText.text}"
                 postText.setText(fmt)
                 postText.setSelection(fmt.length)
             }
@@ -125,7 +125,7 @@ class PostActivity : AppCompatActivity() {
         }
     }
 
-    fun setTitleView() {
+    private fun setTitleView() {
         val titleText = findViewById<TextView>(R.id.title)
         titleText.text = if (MainActivity.forum.currentMessage.content.isNotEmpty()) {
             "${MainActivity.forum.currentMessage.content} - 来自： ${MainActivity.forum.name}"
@@ -141,18 +141,19 @@ class PostActivity : AppCompatActivity() {
         collectorButton.setOnClickListener {
             it.isEnabled = false
             val postCount = MainActivity.forum.currentMessage.postCount
-            var pageNum = 1
+            Util.toast("开始收集数据")
             thread {
-                val messages = MainActivity.forum.parsePosts(pageNum).toMutableList()
-                while (messages.size <= postCount) {
+                val messages = MainActivity.forum.parsePosts(1).toMutableList()
+                var pageNum = 2
+                while (messages.size < postCount) {
                     messages += MainActivity.forum.parsePosts(pageNum)
                     pageNum++
                 }
                 MainActivity.forum.currentMessage.pageNumber = 1
                 val items = mutableMapOf<String, Int>().apply {
-                    messages.forEach {
-                        if (!(it.author in this)) {
-                            this.set(it.author, this.size)
+                    messages.forEach { msg ->
+                        if (!containsKey(msg.author)) {
+                            this[msg.author] = size
                         }
                     }
                 }
@@ -168,23 +169,24 @@ class PostActivity : AppCompatActivity() {
                         ) { _, curIndex, isCheck ->
                             val k = users[curIndex]
                             if (isCheck) {
-                                items.set(k, curIndex)
+                                items[k] = curIndex
                             } else {
-                                items.set(k, -1)
+                                items[k] = -1
                             }
                         }
                         setPositiveButton("选好了") { _, _ ->
                             thread {
-                                val collectors = messages.filter {
-                                    items.containsKey(it.author) && items.get(it.author) != -1
+                                val collectors = messages.filter { msg ->
+                                    items.containsKey(msg.author) && items[msg.author] != -1
                                 } + MainActivity.forum.currentMessage
 
-                                collectors.forEach {
-                                    it.isDatabase = true
-                                    if (it.dateLine == 0L) {
-                                        it.dateLine = Date().time
+                                collectors.forEach { collector ->
+                                    collector.isDatabase = true
+                                    if (collector.dateLine == 0L) {
+                                        collector.dateLine = Date().time
                                     }
                                 }
+
                                 Util.addCollects(collectors)
                             }
                         }

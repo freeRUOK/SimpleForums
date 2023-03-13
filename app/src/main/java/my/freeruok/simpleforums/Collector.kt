@@ -7,13 +7,13 @@ import androidx.room.*
 
 @Dao
 interface MessageDao {
-    @Query("select * from MESSAGE_TAB")
+    @Query("select * from $MESSAGE_TAB")
     fun all(): List<Message>
 
-    @Query("select * from MESSAGE_TAB where view_count != 0 limit :offset, :maxNum")
+    @Query("select * from $MESSAGE_TAB where view_count != 0 ORDER BY id DESC limit :offset, :maxNum")
     fun fastThread(offset: Int, maxNum: Int): MutableList<Message>
 
-    @Query("select * from MESSAGE_TAB where view_count == 0 and tid == :tid limit :offset, :maxNum")
+    @Query("select * from $MESSAGE_TAB where view_count == 0 and tid == :tid limit :offset, :maxNum")
     fun fastPost(tid: Long, offset: Int, maxNum: Int): MutableList<Message>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -21,9 +21,12 @@ interface MessageDao {
 
     @Delete
     fun remove(message: Message): Int
+
+    @Query("delete from $MESSAGE_TAB")
+    fun clear()
 }
 
-@Database(entities = [Message::class], version = 1, exportSchema = false)
+@Database(entities = [Message::class], version = 2, exportSchema = false)
 abstract class CollectorDatabase : RoomDatabase() {
     abstract fun messageDao(): MessageDao
 }

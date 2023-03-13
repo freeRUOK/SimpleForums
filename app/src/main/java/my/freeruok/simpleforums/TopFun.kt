@@ -23,7 +23,7 @@ fun ByteArray.hex(): String {
 }
 
 //* 启动用户登录activity
-fun Forum.startLogin(activity: AppCompatActivity) {
+fun startLogin(activity: AppCompatActivity) {
     val intent = Intent(activity, LoginActivity::class.java)
     activity.startActivityForResult(intent, REQUEST_CODE_LOGIN)
 }
@@ -36,7 +36,7 @@ fun Forum.load(
     isDatabase: Boolean
 ) {
     if (this.isForce && !this.isOnline && (!isDatabase)) {
-        this.startLogin(activity)
+        startLogin(activity)
         return
     }
     App.isLoading = true
@@ -63,8 +63,10 @@ fun Forum.load(
         activity.runOnUiThread {
             if (messages.isEmpty()) {
 
-                activity.contentListText.text = if (keyword.isEmpty()) {
-                    "加载失败， 请检查你的网络。"
+                activity.contentListText.text = if (isDatabase) {
+                    "暂无本地收藏记录"
+                } else if (keyword.isEmpty()) {
+                    "加载失败， 请检查你的网络， 或者与开发者联系。"
                 } else {
                     "无搜索结果， 更换一个关键字试试"
                 }
@@ -99,7 +101,6 @@ val Forum.statusText: String
 
 fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
     if (activity.posts.size >= this.currentMessage.postCount) {
-
         return
     }
     App.isLoading = true
@@ -112,10 +113,10 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
 
     thread {
         val messages = try {
-            if (!this.currentMessage.isDatabase) {
-                this.parsePosts(this.currentMessage.pageNumber)
-            } else {
+            if (this.currentMessage.isDatabase) {
                 Util.fastCollector(this.currentMessage)
+            } else {
+                this.parsePosts(this.currentMessage.pageNumber)
             }
         } catch (e: Exception) {
             listOf()
@@ -123,17 +124,18 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
 
         activity.runOnUiThread {
             if (messages.isEmpty()) {
-                activity.postListText.text = "加载失败， 请检查你的网络。"
+                activity.postListText.text =if (this.currentMessage.isDatabase) {
+                    "收藏字段暂无详细内容"
+                } else {
+                    "加载失败检查网络状态或与开发者联系"
+                }
                 App.isLoading = false
                 activity.swipeLayout.isRefreshing = false
                 return@runOnUiThread
             }
 
             val mediaSources = messages.filter { it.mediaItems.isNotEmpty() }
-
             if (mediaSources.isNotEmpty()) {
-
-
                 activity.findViewById<View>(com.google.android.exoplayer2.ui.R.id.exo_repeat_toggle).visibility =
                     View.GONE
                 activity.findViewById<View>(com.google.android.exoplayer2.ui.R.id.exo_shuffle).visibility =
@@ -148,8 +150,8 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
                     playerView.visibility = View.VISIBLE
                 }
                 mediaSources.forEach {
-                    it.mediaItems.forEach {
-                        activity.mPlayer.addMediaItem(it)
+                    it.mediaItems.forEach { item ->
+                        activity.mPlayer.addMediaItem(item)
                     }
                 }
             }

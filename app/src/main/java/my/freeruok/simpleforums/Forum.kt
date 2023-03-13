@@ -8,6 +8,7 @@
 */
 package my.freeruok.simpleforums
 
+
 import com.google.android.exoplayer2.MediaItem
 import org.json.JSONArray
 import org.json.JSONException
@@ -194,6 +195,16 @@ class AMForum : Forum() {
                     val a = e[0]
                     val content = a.text()
                     val url = a.attr("href")
+
+                    val tid = try {
+                        (Regex("tid=\\d+").find(url)?.groupValues ?: listOf(
+                            "0",
+                            "0"
+                        ))[1].toLong()
+                    } catch (e: Exception) {
+                        0L
+                    }
+
                     val (author, lastPost) = dataObj.select("cite").map { it.text() }
                     val (dateFmt, _, lastDateFmt) = dataObj.select("em").map { it.text() }
                     val (num) = dataObj.select(".num")
@@ -201,6 +212,7 @@ class AMForum : Forum() {
                     val (view) = num.select("em").map { it.text().toInt() }
                     // 构造Message对象返回
                     Message(
+                        tid = tid,
                         content = content,
                         url = url,
                         author = author,
@@ -221,6 +233,7 @@ class AMForum : Forum() {
                 val (author) = dataObj.select(".authi").map { it.text() }
                 val (dateFmt) = dataObj.select("span[title]").map { it.text() }
                 Message(
+                    tid = currentMessage.tid,
                     content = content,
                     author = author,
                     dateFmt = dateFmt,
@@ -366,6 +379,7 @@ class BMForum : Forum() {
                 )
             } else {
                 Message(
+                    tid = currentMessage.tid,
                     content = dataObj.getString("body"),
                     author = dataObj.getString("userName"),
                     dateFmt = dataObj.getString("createTime"),
@@ -427,7 +441,7 @@ class BMForum : Forum() {
                 return sections.toTypedArray()
             }
         }
-        return arrayOf<Section>()
+        return arrayOf()
     }
 
     // 发布新主题
@@ -548,7 +562,7 @@ open class QTForum : Forum() {
             secKey
         )
         val body = Util.fastHttp(url = baseURL + "user-login.htm", querys = httpForms + forms)
-        return if (body.size != 0) {
+        return if (body.isNotEmpty()) {
             //* 解析json数据， 参看蜻蜓社区返回的相关json数据
             val jsonObj = JSONObject(body.toString(Charset.forName(charsetName)))
             if (jsonObj.getInt("status") == 1) {
@@ -706,7 +720,7 @@ open class QTForum : Forum() {
                 return firstSections.toTypedArray()
             }
         }
-        return arrayOf<Section>()
+        return arrayOf()
     }
 
     // 蜻蜓社区和争渡网发布新主题
@@ -746,5 +760,4 @@ class ZDForum : QTForum() {
     )
     override val secKey = "seckey" to "57dfd28547"
     override val isMD5Password: Boolean = false
-
 }

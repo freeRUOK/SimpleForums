@@ -34,9 +34,9 @@ data class Message(
     var viewCount: Int = 0,
     @ColumnInfo(name = "is_database")
     var isDatabase: Boolean = false,
-    @Ignore
+    @ColumnInfo(name = "last_date")
     var lastDate: Long = 0L,
-    @Ignore
+    @ColumnInfo(name = "last_date_fmt")
     var lastDateFmt: String = "",
     @ColumnInfo(name = "last_post")
     var lastPost: String = "",
@@ -46,12 +46,15 @@ data class Message(
     fun formatThread(): String {
         return StringBuilder().apply {
             append(Jsoup.parse(content).text())
+            if (id != 0L) {
+                append(" 来自本地数据源 ")
+            }
             if (author.isNotEmpty()) {
-                append(" ${viewCount} 次点击 ${postCount - 1} 次跟帖， ")
-                append("${author} 发布于 ${dateFmt}, ")
+                append(" $viewCount 次点击 ${postCount - 1} 次跟帖， ")
+                append("$author 发布于 ${dateFmt}, ")
             }
             if (lastPost.isNotEmpty()) {
-                append("最后 ${lastPost} 回复于 ${lastDateFmt}")
+                append("最后 $lastPost 回复于 $lastDateFmt")
             }
         }.toString()
     }
@@ -60,9 +63,9 @@ data class Message(
         val auth = when (floor) {
             0 -> ""
             1 -> "楼主 ${author}说： "
-            else -> "${floor} 楼 ${author}说： "
+            else -> "$floor 楼 ${author}说： "
         }
-        return "${auth}${Jsoup.parse(content).text()} 发布于 ${dateFmt}"
+        return "$auth ${Jsoup.parse(content).text()} 发布于 $dateFmt"
     }
 
     @Ignore

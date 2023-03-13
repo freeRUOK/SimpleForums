@@ -12,14 +12,15 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
     val threadList = mutableListOf<Message>()
     lateinit var messageAdapter: MessageAdapter
-    lateinit var contentList: ListView
+    private lateinit var contentList: ListView
     lateinit var contentListText: TextView
-    lateinit var forumRadioGroup: RadioGroup
-    lateinit var statusText: TextView
+    private lateinit var forumRadioGroup: RadioGroup
+    private lateinit var statusText: TextView
     lateinit var swipeRefresh: SwipeRefreshLayout
     private var isDatabase: Boolean = false
 
@@ -38,7 +39,8 @@ class MainActivity : AppCompatActivity() {
 
         contentList.emptyView = contentListText
 
-        forumRadioGroup.setOnCheckedChangeListener { group, checkedId ->
+        forumRadioGroup.setOnCheckedChangeListener { _, _ ->
+            isDatabase = false
             loadForum()
             forum.load(this, isDatabase = isDatabase)
         }
@@ -55,7 +57,7 @@ class MainActivity : AppCompatActivity() {
         setContentList()
     }
 
-    fun setHideBar() {
+    private fun setHideBar() {
         val vibrateSwitch = findViewById<Switch>(R.id.vibrate_switch)
         vibrateSwitch.setOnCheckedChangeListener { _, isChecked ->
             Util.vibrateSwitch = if (isChecked) {
@@ -67,7 +69,7 @@ class MainActivity : AppCompatActivity() {
         vibrateSwitch.isChecked = Util.vibrateSwitch
     }
 
-    fun setContentList() {
+    private fun setContentList() {
         swipeRefresh.setOnRefreshListener {
             Util.showView(this, findViewById(R.id.main_hide_bar), 15)
             if (keyword.isNotEmpty()) {
@@ -77,8 +79,8 @@ class MainActivity : AppCompatActivity() {
             forum.load(this, isDatabase = isDatabase)
         }
         contentList.setOnScrollListener(OnScrollListener())
-        contentList.setOnItemClickListener { parent, view, position, id ->
-            forum.currentMessage = threadList.get(position)
+        contentList.setOnItemClickListener { _, _, position, _ ->
+            forum.currentMessage = threadList[position]
             val intent = Intent(this, PostActivity::class.java)
             startActivity(intent)
         }
@@ -119,6 +121,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     var keyword: String = ""
+
+    @Deprecated("waiting process")
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         when (requestCode) {
             REQUEST_CODE_LOGIN -> if (resultCode == RESULT_OK) {
@@ -138,18 +142,18 @@ class MainActivity : AppCompatActivity() {
         super.onActivityResult(requestCode, resultCode, data)
     }
 
-    fun loadForum() {
+    private fun loadForum() {
         if (!this::contentList.isInitialized) {
             val forumId = App.context.getSharedPreferences(USER_DATA, MODE_PRIVATE)
                 .getInt("forum_id", R.id.aimang_radio)
             forumRadioGroup = findViewById(R.id.forum_radio_group)
-            contentList = findViewById<ListView>(R.id.content_list)
-            contentListText = findViewById<TextView>(R.id.content_list_text)
+            contentList = findViewById(R.id.content_list)
+            contentListText = findViewById(R.id.content_list_text)
             messageAdapter = MessageAdapter(threadList)
             contentList.adapter = messageAdapter
-            statusText = findViewById<TextView>(R.id.title)
+            statusText = findViewById(R.id.title)
             forumRadioGroup.check(forumId)
-            swipeRefresh = findViewById<SwipeRefreshLayout>(R.id.swipe_refresh)
+            swipeRefresh = findViewById(R.id.swipe_refresh)
         }
         forum = when (forumRadioGroup.checkedRadioButtonId) {
             R.id.aimang_radio -> AMForum()
@@ -176,11 +180,11 @@ class MainActivity : AppCompatActivity() {
                                 forum.userAuth = ""
                                 statusText.text = forum.statusText
                             }
-                            setNegativeButton("放弃", { _, _ -> Unit })
+                            setNegativeButton("放弃") { _, _ -> }
                             show()
                         }
                     } else {
-                        forum.startLogin(this)
+                        startLogin(this)
                     }
                 }
                 R.id.more_open -> {
@@ -191,9 +195,18 @@ class MainActivity : AppCompatActivity() {
                 R.id.more_thread -> {
                     startActivity(Intent(this, ThreadActivity::class.java))
                 }
-                R.id.more_more_collector -> {
+                R.id.more_more_open_collector -> {
                     isDatabase = true
                     forum.load(this, isDatabase = isDatabase)
+                }
+                R.id.more_more_clear_collector -> {
+                    AlertDialog.Builder(this).apply {
+                        setMessage("清空数据不可恢复， 谨慎操作！")
+                        setPositiveButton("确认清空") { _, _ ->
+                            thread { Util.clearCollector() }
+                        }
+                        show()
+                    }
                 }
             }
             false
@@ -201,7 +214,7 @@ class MainActivity : AppCompatActivity() {
         popupMoreMenu.show()
     }
 
-    fun checkLicense() {
+    private fun checkLicense() {
         if (!getSharedPreferences(USER_DATA, MODE_PRIVATE).contains(LICENSE_CODE)) {
             startActivity(Intent(this, LicenseActivity::class.java))
         }
