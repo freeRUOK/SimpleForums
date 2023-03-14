@@ -1,0 +1,4 @@
+# 修改日志
+
+2023-03-13 添加收藏夹功能 弃用startActivityForResult和onActivityResult等过时API， 改用Activity Result API
+2023-03-15 添加导出为zip压缩包文件的功能， 修改Android 最低API为26
