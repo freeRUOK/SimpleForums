@@ -5,7 +5,6 @@ package my.freeruok.simpleforums
 
 import android.content.Intent
 import android.view.View
-import androidx.appcompat.app.AppCompatActivity
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.ui.PlayerControlView
 import java.security.MessageDigest
@@ -22,12 +21,6 @@ fun ByteArray.hex(): String {
     return joinToString("") { "%02X".format(it) }.lowercase()
 }
 
-//* 启动用户登录activity
-fun startLogin(activity: AppCompatActivity) {
-    val intent = Intent(activity, LoginActivity::class.java)
-    activity.startActivityForResult(intent, REQUEST_CODE_LOGIN)
-}
-
 //* 加载论坛主题帖数据
 fun Forum.load(
     activity: MainActivity,
@@ -35,12 +28,15 @@ fun Forum.load(
     keyword: String = "",
     isDatabase: Boolean
 ) {
+    // 检测登录状态并强制登录
     if (this.isForce && !this.isOnline && (!isDatabase)) {
-        startLogin(activity)
+        activity.userLoginActivityResultLauncher.launch(Intent(activity, LoginActivity::class.java))
         return
     }
+    //开启加载数据
     App.isLoading = true
 
+    // 处理刷新
     if (isReload) {
         activity.threadList.clear()
         activity.messageAdapter.notifyDataSetInvalidated()
@@ -51,18 +47,19 @@ fun Forum.load(
     thread {
         val messages = try {
             if (isDatabase) {
-                Util.fastCollector()
+                Util.fastCollector() // 从本地数据源获取数据
             } else if (keyword.isEmpty()) {
-                this.parse()
+                this.parse()  // 从网络获取新数据
             } else {
-                this.parseSearch(keyword)
+                this.parseSearch(keyword) // 网络搜索
             }
         } catch (e: Exception) {
             listOf()
         }
+        // 操作UI线程
         activity.runOnUiThread {
+            // 没有数据的情况
             if (messages.isEmpty()) {
-
                 activity.contentListText.text = if (isDatabase) {
                     "暂无本地收藏记录"
                 } else if (keyword.isEmpty()) {
@@ -70,19 +67,21 @@ fun Forum.load(
                 } else {
                     "无搜索结果， 更换一个关键字试试"
                 }
+                // 设置页码
                 if (this.pageNumber > 1) {
                     this.pageNumber--
                 }
+                // 结束加载数据
                 App.isLoading = false
                 return@runOnUiThread
             }
-            this.pageNumber++
-            activity.threadList += messages
+            this.pageNumber++  // 更新页码
+            activity.threadList += messages // 更新数据
             if (isReload) {
-                activity.messageAdapter.notifyDataSetInvalidated()
+                activity.messageAdapter.notifyDataSetInvalidated() // 通知数据刷新
                 activity.swipeRefresh.isRefreshing = false
             } else {
-                activity.messageAdapter.notifyDataSetChanged()
+                activity.messageAdapter.notifyDataSetChanged()  // 通知数据更改
             }
             App.isLoading = false
         }
@@ -99,7 +98,9 @@ val Forum.statusText: String
         }
     }
 
+// 加载主题详细内容， 基本流程和加载主题大体相同
 fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
+    // 如果全部加载完毕就直接返回
     if (activity.posts.size >= this.currentMessage.postCount) {
         return
     }
@@ -124,18 +125,20 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
 
         activity.runOnUiThread {
             if (messages.isEmpty()) {
-                activity.postListText.text =if (this.currentMessage.isDatabase) {
-                    "收藏字段暂无详细内容"
+                activity.postListText.text = if (this.currentMessage.isDatabase) {
+                    "本收藏主题暂无详细内容"
                 } else {
-                    "加载失败检查网络状态或与开发者联系"
+                    "加载失败请检查网络状态， 或与开发者联系"
                 }
                 App.isLoading = false
                 activity.swipeLayout.isRefreshing = false
                 return@runOnUiThread
             }
 
+            // 添加媒体
             val mediaSources = messages.filter { it.mediaItems.isNotEmpty() }
             if (mediaSources.isNotEmpty()) {
+                // 隐藏多余的播放布局上的view
                 activity.findViewById<View>(com.google.android.exoplayer2.ui.R.id.exo_repeat_toggle).visibility =
                     View.GONE
                 activity.findViewById<View>(com.google.android.exoplayer2.ui.R.id.exo_shuffle).visibility =
@@ -144,11 +147,13 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
                     View.GONE
                 val playerView = activity.findViewById<PlayerControlView>(R.id.player_view)
                 if (playerView.visibility == View.GONE) {
+                    // 创建EXO播放器
                     activity.mPlayer = ExoPlayer.Builder(activity).build()
+                    // 播放控制UI和播放器绑定
                     playerView.player = activity.mPlayer
-
                     playerView.visibility = View.VISIBLE
                 }
+                // 添加媒体
                 mediaSources.forEach {
                     it.mediaItems.forEach { item ->
                         activity.mPlayer.addMediaItem(item)
@@ -164,7 +169,6 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
                 activity.postAdapter.notifyDataSetChanged()
             }
             App.isLoading = false
-//activity.setTitle()
         }
     }
 }

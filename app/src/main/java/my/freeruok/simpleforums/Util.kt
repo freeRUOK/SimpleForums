@@ -5,6 +5,7 @@ package my.freeruok.simpleforums
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -19,6 +20,13 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import org.json.JSONObject
+import org.jsoup.Jsoup
+import java.time.Instant
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 import kotlin.concurrent.thread
 
 object Util {
@@ -51,8 +59,7 @@ object Util {
                         querys.forEach { add(it.key, it.value.toString()) }
                         build()
                     }
-                }
-                )
+                })
             }
             build()
         }
@@ -79,6 +86,7 @@ object Util {
     // 震动初始化
     private lateinit var vibrator: Vibrator
     var vibrateSwitch: Boolean = true
+
     fun init() {
         if (!this::vibrator.isInitialized) {
             vibrator = App.context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
@@ -92,9 +100,9 @@ object Util {
     fun vibrant(times: LongArray, strength: IntArray, isRepeat: Boolean = false) {
         if (vibrateSwitch && vibrator.hasVibrator()) {
             val r = if (isRepeat) 0 else -1
-            val aa = AudioAttributes.Builder()
-                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                .setUsage(AudioAttributes.USAGE_ALARM).build()
+            val aa =
+                AudioAttributes.Builder().setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                    .setUsage(AudioAttributes.USAGE_ALARM).build()
             if (Build.VERSION.SDK_INT >= 26) {
                 vibrator.vibrate(VibrationEffect.createWaveform(times, strength, r), aa)
             } else {
@@ -127,6 +135,7 @@ object Util {
         return false
     }
 
+    // 定时显示被隐藏的View元素
     @Volatile
     private var isShow: Boolean = false
     fun showView(activity: AppCompatActivity, view: View, second: Int) {
@@ -144,23 +153,19 @@ object Util {
         }
     }
 
+    // 收藏夹新增一条记录
     fun addCollects(messages: List<Message>) {
-        val dao =
-            Room.databaseBuilder(
-                App.context,
-                CollectorDatabase::class.java,
-                FORUMS_APP_DATABASE_NAME
-            ).build()
+        val dao = Room.databaseBuilder(
+            App.context, CollectorDatabase::class.java, FORUMS_APP_DATABASE_NAME
+        ).build()
         dao.messageDao().save(messages)
     }
 
+    // 查询收藏夹
     fun fastCollector(curMessage: Message? = null): MutableList<Message> {
-        val dao =
-            Room.databaseBuilder(
-                App.context,
-                CollectorDatabase::class.java,
-                FORUMS_APP_DATABASE_NAME
-            ).build()
+        val dao = Room.databaseBuilder(
+            App.context, CollectorDatabase::class.java, FORUMS_APP_DATABASE_NAME
+        ).build()
 
         val result = if (curMessage == null) {
             dao.messageDao().fastThread((MainActivity.forum.pageNumber - 1) * 20, 20)
@@ -176,5 +181,66 @@ object Util {
     fun clearCollector() {
         Room.databaseBuilder(App.context, CollectorDatabase::class.java, FORUMS_APP_DATABASE_NAME)
             .build().messageDao().clear()
+    }
+
+    //导出收藏夹全部数据
+    fun exportCollector(uri: Uri) {
+        thread {
+            val messages = Room.databaseBuilder(
+                App.context, CollectorDatabase::class.java, FORUMS_APP_DATABASE_NAME
+            ).build().messageDao().all()
+
+            // 分类数据
+            val datas: MutableMap<Long, MutableList<Message>> =
+                mutableMapOf<Long, MutableList<Message>>().apply {
+                    messages.forEach {
+                        if (!containsKey(it.tid)) {
+                            this[it.tid] = mutableListOf()
+                        }
+                        this[it.tid]!!.add(it)
+                    }
+                }
+
+            // 排序
+            datas.forEach {
+                it.value.sortBy { msg -> msg.floor }
+            }
+
+            // 生成压缩包元数据
+            val invalidChars = Regex("[\"\\\\/?:;<>+=]")
+            val zipContents = datas.values.map {
+                val mainFloor = it.removeAt(0)
+
+                val dtf = DateTimeFormatter.ofPattern("u/MM/dd").format(
+                    LocalDateTime.ofInstant(
+                        Instant.ofEpochSecond(mainFloor.dateLine),
+                        ZoneId.systemDefault()
+                    )
+                )
+                val fileName = "${mainFloor.author}/${mainFloor.content}".replace(invalidChars, "_")
+                val title = "$dtf/$fileName"
+
+                it.map { msg ->
+                    val docTree = Jsoup.parse(msg.content)
+                    val res = docTree.select("a").map {
+                        "${it.text()} (${it.attr("href")})"
+                    }.joinToString("\n")
+
+                    val content = "${docTree.text()}\n${res}"
+                    "$title/${msg.floor}.txt" to "作者： ${msg.author}\n\n${content}\n\n发布于： ${msg.dateFmt}\n".encodeToByteArray()
+                }
+            }
+
+            // 写入zip文件
+            ZipOutputStream(App.context.contentResolver.openOutputStream(uri)).use {
+                zipContents.forEach { zipList ->
+                    zipList.forEach { zip ->
+                        it.putNextEntry(ZipEntry(zip.first))
+                        it.write(zip.second)
+                    }
+                }
+
+            }
+        }
     }
 }

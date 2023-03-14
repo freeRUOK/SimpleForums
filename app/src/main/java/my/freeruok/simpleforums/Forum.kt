@@ -197,7 +197,7 @@ class AMForum : Forum() {
                     val url = a.attr("href")
 
                     val tid = try {
-                        (Regex("tid=\\d+").find(url)?.groupValues ?: listOf(
+                        (Regex("tid=(\\d+)").find(url)?.groupValues ?: listOf(
                             "0",
                             "0"
                         ))[1].toLong()
@@ -211,6 +211,7 @@ class AMForum : Forum() {
                     val (post) = num.select("a").map { it.text().toInt() + 1 }
                     val (view) = num.select("em").map { it.text().toInt() }
                     // 构造Message对象返回
+
                     Message(
                         tid = tid,
                         content = content,

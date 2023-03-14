@@ -13,7 +13,7 @@ import androidx.core.widget.addTextChangedListener
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.ui.PlayerControlView
-import java.util.*
+import java.time.Instant
 import kotlin.concurrent.thread
 
 class PostActivity : AppCompatActivity() {
@@ -183,7 +183,7 @@ class PostActivity : AppCompatActivity() {
                                 collectors.forEach { collector ->
                                     collector.isDatabase = true
                                     if (collector.dateLine == 0L) {
-                                        collector.dateLine = Date().time
+                                        collector.dateLine = Instant.now().epochSecond
                                     }
                                 }
 

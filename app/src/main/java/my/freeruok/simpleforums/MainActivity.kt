@@ -8,10 +8,14 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.*
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import kotlin.concurrent.thread
 
 class MainActivity : AppCompatActivity() {
@@ -32,6 +36,36 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         supportActionBar?.hide()
         setContentView(R.layout.activity_main)
+
+        searchActivityResultLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                if (it.resultCode == RESULT_OK && it.data != null) {
+                    val kw = it.data?.getStringExtra(KEYWORD_STR) ?: ""
+                    if (kw.isNotEmpty()) {
+                        keyword = kw
+                        forum.load(this, keyword = keyword, isDatabase = isDatabase)
+                    }
+                }
+            }
+
+        userLoginActivityResultLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+                if (it.resultCode == RESULT_OK) {
+                    statusText.text = forum.statusText
+                    forum.load(this, isDatabase = isDatabase)
+                } else {
+                    contentListText.text = "${forum.name}要求用户登录"
+                }
+            }
+
+        exportCollectorActivityResultLauncher =
+            registerForActivityResult(ActivityResultContracts.CreateDocument()) {
+                if (it != null) {
+                    Util.exportCollector(it)
+                } else {
+                    Util.toast("取消导出")
+                }
+            }
         checkLicense()
         Util.init()
         setHideBar()
@@ -45,16 +79,15 @@ class MainActivity : AppCompatActivity() {
             forum.load(this, isDatabase = isDatabase)
         }
 
-        findViewById<Button>(R.id.start_search_button).setOnClickListener {
-            startActivityForResult(Intent(this, SearchActivity::class.java), REQUEST_CODE_SEARCH)
-        }
-
         val moreButton = findViewById<Button>(R.id.more_button)
         moreButton.setOnClickListener {
             popupMoreMenu(moreButton)
         }
 
         setContentList()
+        findViewById<Button>(R.id.start_search_button).setOnClickListener {
+            searchActivityResultLauncher.launch(Intent(this, SearchActivity::class.java))
+        }
     }
 
     private fun setHideBar() {
@@ -122,25 +155,9 @@ class MainActivity : AppCompatActivity() {
 
     var keyword: String = ""
 
-    @Deprecated("waiting process")
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        when (requestCode) {
-            REQUEST_CODE_LOGIN -> if (resultCode == RESULT_OK) {
-                statusText.text = forum.statusText
-                forum.load(this, isDatabase = isDatabase)
-            } else {
-                contentListText.text = "${forum.name}要求用户登录"
-            }
-            REQUEST_CODE_SEARCH -> {
-                val kw = data?.getStringExtra(KEYWORD_STR) ?: ""
-                if (kw.isNotEmpty()) {
-                    keyword = kw
-                    forum.load(this, keyword = keyword, isDatabase = isDatabase)
-                }
-            }
-        }
-        super.onActivityResult(requestCode, resultCode, data)
-    }
+    private lateinit var searchActivityResultLauncher: ActivityResultLauncher<Intent>
+    lateinit var userLoginActivityResultLauncher: ActivityResultLauncher<Intent>
+    lateinit var exportCollectorActivityResultLauncher: ActivityResultLauncher<String>
 
     private fun loadForum() {
         if (!this::contentList.isInitialized) {
@@ -184,7 +201,12 @@ class MainActivity : AppCompatActivity() {
                             show()
                         }
                     } else {
-                        startLogin(this)
+                        userLoginActivityResultLauncher.launch(
+                            Intent(
+                                this,
+                                LoginActivity::class.java
+                            )
+                        )
                     }
                 }
                 R.id.more_open -> {
@@ -198,6 +220,12 @@ class MainActivity : AppCompatActivity() {
                 R.id.more_more_open_collector -> {
                     isDatabase = true
                     forum.load(this, isDatabase = isDatabase)
+                }
+                R.id.more_more_export_collector -> {
+                    val dtf = DateTimeFormatter.ofPattern("u-MM-dd").format(LocalDateTime.now())
+                    val fileName =
+                        "${resources.getString(R.string.app_name)}（收藏夹导出包）_${dtf}.zip"
+                    exportCollectorActivityResultLauncher.launch(fileName)
                 }
                 R.id.more_more_clear_collector -> {
                     AlertDialog.Builder(this).apply {
@@ -220,4 +248,3 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-

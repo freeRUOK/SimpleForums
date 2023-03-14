@@ -1,5 +1,6 @@
 /* Section.kt */
 // * 2651688427@qq.com
+// 定义论坛板块
 
 package my.freeruok.simpleforums
 
