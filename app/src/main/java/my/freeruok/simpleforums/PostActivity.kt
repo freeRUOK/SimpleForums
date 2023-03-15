@@ -29,18 +29,22 @@ class PostActivity : AppCompatActivity() {
         supportActionBar?.hide()
         setContentView(R.layout.activity_post)
 
+// 设置listView
         postListText = findViewById(R.id.post_list_text)
         postAdapter = MessageAdapter(posts)
         postList = findViewById(R.id.post_list)
         postList.emptyView = postListText
         postList.adapter = postAdapter
 
+// 设置上拉刷新
         swipeLayout = findViewById(R.id.post_swipe_layout)
         swipeLayout.setOnRefreshListener {
+// 显示顶部状态栏
             Util.showView(this, findViewById(R.id.post_layout_title), 10)
             MainActivity.forum.loadPosts(this, isReload = true)
         }
         postList.setOnScrollListener(OnScrollListener())
+// 设置回帖等UI事件
         setSendEventListener()
         setTitleView()
     }
@@ -54,7 +58,9 @@ class PostActivity : AppCompatActivity() {
 
         postText.isEnabled = true
 
+// listView的某元素被单机
         postList.setOnItemClickListener { _, _, position, _ ->
+// 在回复输入框里填充当前被点击的用户信息
             if (Util.showInputMethod(postText)) {
                 val cm = posts[position]
                 val floor = if (cm.floor == 1) {
@@ -63,11 +69,13 @@ class PostActivity : AppCompatActivity() {
                     "${cm.floor} 楼"
                 }
                 val fmt = "回${floor}${cm.author}: \n${postText.text}"
+// 填充数据并且把光标移动到文本最末
                 postText.setText(fmt)
                 postText.setSelection(fmt.length)
             }
         }
 
+// 输入框的文本改变的时候根据情况切换发布回复按钮的可用状态
         postText.addTextChangedListener {
             if (it != null && it.length >= 5) {
                 sendButton.isEnabled = true
@@ -76,8 +84,10 @@ class PostActivity : AppCompatActivity() {
             }
         }
 
+// 回复帖子
         sendButton.setOnClickListener {
             val content = postText.text.toString().trim()
+// 防止用户多次点击发送按钮
             sendButton.isEnabled = false
             thread {
                 val result = try {
@@ -85,9 +95,11 @@ class PostActivity : AppCompatActivity() {
                 } catch (e: Exception) {
                     Message()
                 }
+// 更改UI
                 this.runOnUiThread {
                     sendButton.isEnabled = true
                     if (result.content.isNotEmpty()) {
+// 回复成功清空输入框隐藏键盘， 更新并刷新数据
                         postText.setText("")
                         Util.hideInputMethod(postText)
                         posts.add(result)
@@ -125,6 +137,7 @@ class PostActivity : AppCompatActivity() {
         }
     }
 
+    // 设置顶部标题状态
     private fun setTitleView() {
         val titleText = findViewById<TextView>(R.id.title)
         titleText.text = if (MainActivity.forum.currentMessage.content.isNotEmpty()) {
@@ -138,11 +151,13 @@ class PostActivity : AppCompatActivity() {
         } else {
             "收藏"
         }
+// 收藏主题
         collectorButton.setOnClickListener {
             it.isEnabled = false
             val postCount = MainActivity.forum.currentMessage.postCount
             Util.toast("开始收集数据")
             thread {
+// 从网上收集全部数据
                 val messages = MainActivity.forum.parsePosts(1).toMutableList()
                 var pageNum = 2
                 while (messages.size < postCount) {
@@ -150,6 +165,7 @@ class PostActivity : AppCompatActivity() {
                     pageNum++
                 }
                 MainActivity.forum.currentMessage.pageNumber = 1
+// 生成所有用户共选择
                 val items = mutableMapOf<String, Int>().apply {
                     messages.forEach { msg ->
                         if (!containsKey(msg.author)) {
@@ -167,6 +183,7 @@ class PostActivity : AppCompatActivity() {
                             users,
                             items.values.map { true }.toBooleanArray()
                         ) { _, curIndex, isCheck ->
+// 标记选择的内容
                             val k = users[curIndex]
                             if (isCheck) {
                                 items[k] = curIndex
@@ -176,10 +193,12 @@ class PostActivity : AppCompatActivity() {
                         }
                         setPositiveButton("选好了") { _, _ ->
                             thread {
+// 过滤出app用户选择的网站用户的内容
                                 val collectors = messages.filter { msg ->
                                     items.containsKey(msg.author) && items[msg.author] != -1
                                 } + MainActivity.forum.currentMessage
 
+// 保存到数据库之前的处理
                                 collectors.forEach { collector ->
                                     collector.isDatabase = true
                                     if (collector.dateLine == 0L) {
@@ -187,6 +206,7 @@ class PostActivity : AppCompatActivity() {
                                     }
                                 }
 
+// 保存到数据库
                                 Util.addCollects(collectors)
                             }
                         }

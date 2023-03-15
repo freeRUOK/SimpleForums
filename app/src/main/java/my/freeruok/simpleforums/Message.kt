@@ -10,6 +10,7 @@ import androidx.room.PrimaryKey
 import com.google.android.exoplayer2.MediaItem
 import org.jsoup.Jsoup
 
+// room和网站的数据类
 @Entity(tableName = "MESSAGE_TAB")
 data class Message(
     @PrimaryKey(autoGenerate = true)

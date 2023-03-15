@@ -4,9 +4,9 @@
 package my.freeruok.simpleforums
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.net.Uri
-import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.view.View
@@ -18,7 +18,7 @@ import okhttp3.FormBody
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.time.Instant
@@ -53,7 +53,7 @@ object Util {
             }
             if (querys.isNotEmpty()) {
                 post(if (contentType == CONTENT_TYPE_JSON) {
-                    RequestBody.create(contentType.toMediaType(), JSONObject(querys).toString())
+                    JSONObject(querys).toString().toRequestBody(contentType.toMediaType())
                 } else {
                     FormBody.Builder().run {
                         querys.forEach { add(it.key, it.value.toString()) }
@@ -103,11 +103,7 @@ object Util {
             val aa =
                 AudioAttributes.Builder().setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                     .setUsage(AudioAttributes.USAGE_ALARM).build()
-            if (Build.VERSION.SDK_INT >= 26) {
-                vibrator.vibrate(VibrationEffect.createWaveform(times, strength, r), aa)
-            } else {
-                vibrator.vibrate(times, r, aa)
-            }
+            vibrator.vibrate(VibrationEffect.createWaveform(times, strength, r), aa)
         }
     }
 
@@ -184,7 +180,7 @@ object Util {
     }
 
     //导出收藏夹全部数据
-    fun exportCollector(uri: Uri) {
+    fun exportCollector(uri: Uri, activity: AppCompatActivity? = null) {
         thread {
             val messages = Room.databaseBuilder(
                 App.context, CollectorDatabase::class.java, FORUMS_APP_DATABASE_NAME
@@ -207,7 +203,7 @@ object Util {
             }
 
             // 生成压缩包元数据
-            val invalidChars = Regex("[\"\\\\/?:;<>+=]")
+            val invalidChars = Regex("[\"\\\\/?:;<>+=\\s]")
             val zipContents = datas.values.map {
                 val mainFloor = it.removeAt(0)
 
@@ -222,8 +218,8 @@ object Util {
 
                 it.map { msg ->
                     val docTree = Jsoup.parse(msg.content)
-                    val res = docTree.select("a").map {
-                        "${it.text()} (${it.attr("href")})"
+                    val res = docTree.select("a").map { ele ->
+                        "${ele.text()} (${ele.attr("href")})"
                     }.joinToString("\n")
 
                     val content = "${docTree.text()}\n${res}"
@@ -239,8 +235,20 @@ object Util {
                         it.write(zip.second)
                     }
                 }
-
+                it.finish()
             }
+
+            shareCollector(uri, activity)
+        }
+    }
+
+    // 分享导出的压缩文件
+    fun shareCollector(uri: Uri, activity: AppCompatActivity? = null) {
+        if (activity != null) {
+            val intent = Intent(Intent.ACTION_SEND)
+            intent.type = "application/zip"
+            intent.putExtra(Intent.EXTRA_STREAM, uri)
+            activity.startActivity(intent)
         }
     }
 }

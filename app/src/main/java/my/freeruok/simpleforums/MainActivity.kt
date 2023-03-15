@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -18,6 +19,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import kotlin.concurrent.thread
 
+// 应用程序的启动活动, 显示默认主题列表
 class MainActivity : AppCompatActivity() {
     val threadList = mutableListOf<Message>()
     lateinit var messageAdapter: MessageAdapter
@@ -28,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var swipeRefresh: SwipeRefreshLayout
     private var isDatabase: Boolean = false
 
+    // 当前论坛实力
     companion object {
         lateinit var forum: Forum
     }
@@ -37,8 +40,10 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.hide()
         setContentView(R.layout.activity_main)
 
+// 注册搜索活动
         searchActivityResultLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+// 处理获取的搜索关键字
                 if (it.resultCode == RESULT_OK && it.data != null) {
                     val kw = it.data?.getStringExtra(KEYWORD_STR) ?: ""
                     if (kw.isNotEmpty()) {
@@ -48,8 +53,10 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+// 注册用户登录活动
         userLoginActivityResultLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+// 处理用户登录活动结束后的状态
                 if (it.resultCode == RESULT_OK) {
                     statusText.text = forum.statusText
                     forum.load(this, isDatabase = isDatabase)
@@ -58,60 +65,80 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
+// 注册导出收藏夹外部活动
         exportCollectorActivityResultLauncher =
             registerForActivityResult(ActivityResultContracts.CreateDocument()) {
+// 处理用户选择文件后的状态
                 if (it != null) {
-                    Util.exportCollector(it)
+                    Util.exportCollector(it, this)
                 } else {
                     Util.toast("取消导出")
                 }
             }
-        checkLicense()
-        Util.init()
-        setHideBar()
-        loadForum()
 
+        shareActivityLauncher =
+            registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
+            }
+
+
+// 处理用户协议
+        checkLicense()
+// 初始化相关工具包， 比如震动等
+        Util.init()
+// 设置顶部状态栏
+        setHideBar()
+// 载入网站设置
+        loadForum()
+// 设置listView无数据的情况下展示的view
         contentList.emptyView = contentListText
 
+// 底部网站被切换
         forumRadioGroup.setOnCheckedChangeListener { _, _ ->
             isDatabase = false
             loadForum()
             forum.load(this, isDatabase = isDatabase)
         }
 
+// 弹出更多菜单
         val moreButton = findViewById<Button>(R.id.more_button)
         moreButton.setOnClickListener {
             popupMoreMenu(moreButton)
         }
 
+// 设置内容列表方面的UI
         setContentList()
+// 启动搜索活动
         findViewById<Button>(R.id.start_search_button).setOnClickListener {
             searchActivityResultLauncher.launch(Intent(this, SearchActivity::class.java))
         }
     }
 
+    // 设置顶部状态栏
     private fun setHideBar() {
         val vibrateSwitch = findViewById<Switch>(R.id.vibrate_switch)
+// 开启或关闭震动开关
         vibrateSwitch.setOnCheckedChangeListener { _, isChecked ->
-            Util.vibrateSwitch = if (isChecked) {
-                true
-            } else {
-                false
-            }
+            Util.vibrateSwitch = isChecked
         }
         vibrateSwitch.isChecked = Util.vibrateSwitch
     }
 
+    // 设置内容列表的UI
     private fun setContentList() {
+// 下拉刷新
         swipeRefresh.setOnRefreshListener {
+// 显示顶部状态栏
             Util.showView(this, findViewById(R.id.main_hide_bar), 15)
+// 清空搜索关键字
             if (keyword.isNotEmpty()) {
                 keyword = ""
             }
             isDatabase = false
             forum.load(this, isDatabase = isDatabase)
         }
+// 设置列表滚动事件
         contentList.setOnScrollListener(OnScrollListener())
+// 列表的某元素被点击， 打开主题的详细内容
         contentList.setOnItemClickListener { _, _, position, _ ->
             forum.currentMessage = threadList[position]
             val intent = Intent(this, PostActivity::class.java)
@@ -119,11 +146,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    // 列表的滚动事件实现
     inner class OnScrollListener : AbsListView.OnScrollListener {
         override fun onScrollStateChanged(view: AbsListView?, scrollState: Int) {
 
         }
 
+        // 列表滚动回调方法
         override fun onScroll(
             view: AbsListView?,
             firstVisibleItem: Int,
@@ -131,7 +160,7 @@ class MainActivity : AppCompatActivity() {
             totalItemCount: Int
         ) {
             if ((!App.isLoading) && firstVisibleItem + visibleItemCount >= totalItemCount) {
-
+// 滚动到最后元素的时候继续加载更多数据
                 forum.load(
                     this@MainActivity,
                     forum.pageNumber == 1,
@@ -139,14 +168,16 @@ class MainActivity : AppCompatActivity() {
                     isDatabase = this@MainActivity.isDatabase
                 )
             } else {
+// 滚动的过程中让设备震动
                 Util.vibrant(longArrayOf(40, 20), intArrayOf(0, 120))
             }
         }
     }
 
-
+    // 前台活动不可见的情况下
     override fun onPause() {
         super.onPause()
+// 保存犯罪现场， 比如当前的网站， 震动开关等
         val id = forumRadioGroup.checkedRadioButtonId
         App.context.getSharedPreferences(USER_DATA, MODE_PRIVATE).edit().putInt("forum_id", id)
             .putBoolean(VIBRATE_SWITCH, Util.vibrateSwitch)
@@ -157,9 +188,12 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var searchActivityResultLauncher: ActivityResultLauncher<Intent>
     lateinit var userLoginActivityResultLauncher: ActivityResultLauncher<Intent>
-    lateinit var exportCollectorActivityResultLauncher: ActivityResultLauncher<String>
+    private lateinit var exportCollectorActivityResultLauncher: ActivityResultLauncher<String>
+    lateinit var shareActivityLauncher: ActivityResultLauncher<IntentSenderRequest>
 
+    // 载入网站配置
     private fun loadForum() {
+// 初始化部分组件
         if (!this::contentList.isInitialized) {
             val forumId = App.context.getSharedPreferences(USER_DATA, MODE_PRIVATE)
                 .getInt("forum_id", R.id.aimang_radio)
@@ -172,26 +206,32 @@ class MainActivity : AppCompatActivity() {
             forumRadioGroup.check(forumId)
             swipeRefresh = findViewById(R.id.swipe_refresh)
         }
+// 设置当前网站
         forum = when (forumRadioGroup.checkedRadioButtonId) {
             R.id.aimang_radio -> AMForum()
             R.id.abm365_radio -> BMForum()
             R.id.qt_radio -> QTForum()
             else -> ZDForum()
         }
+// 载入用户信息设置状态
         forum.loadUser()
         statusText.text = forum.statusText
     }
 
+    // 处理更多菜单
     private fun popupMoreMenu(view: View) {
         val popupMoreMenu = PopupMenu(this, view)
         popupMoreMenu.menuInflater.inflate(R.menu.more_menu, popupMoreMenu.menu)
+// 某个菜单被选择
         popupMoreMenu.setOnMenuItemClickListener {
             when (it.itemId) {
+// 用户登录
                 R.id.more_login -> {
                     if (forum.isOnline) {
                         AlertDialog.Builder(this).apply {
                             setMessage("${forum.name}用户${forum.userName}已经登录。")
                             setPositiveButton("注销") { _, _ ->
+// 清空用户登录信息
                                 forum.saveUser("", "")
                                 forum.userName = ""
                                 forum.userAuth = ""
@@ -209,24 +249,29 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 }
+// 用浏览器打开网站
                 R.id.more_open -> {
                     val intent = Intent(Intent.ACTION_DEFAULT)
                     intent.data = Uri.parse(forum.baseURL)
                     startActivity(intent)
                 }
+// 打开发布新主题的活动
                 R.id.more_thread -> {
                     startActivity(Intent(this, ThreadActivity::class.java))
                 }
+// 打开收藏夹
                 R.id.more_more_open_collector -> {
                     isDatabase = true
                     forum.load(this, isDatabase = isDatabase)
                 }
+// 导出收藏夹
                 R.id.more_more_export_collector -> {
                     val dtf = DateTimeFormatter.ofPattern("u-MM-dd").format(LocalDateTime.now())
                     val fileName =
                         "${resources.getString(R.string.app_name)}（收藏夹导出包）_${dtf}.zip"
                     exportCollectorActivityResultLauncher.launch(fileName)
                 }
+// 清空收藏夹
                 R.id.more_more_clear_collector -> {
                     AlertDialog.Builder(this).apply {
                         setMessage("清空数据不可恢复， 谨慎操作！")
@@ -242,6 +287,7 @@ class MainActivity : AppCompatActivity() {
         popupMoreMenu.show()
     }
 
+    // 应用程序第一次启动的时候弹出用户协议和说明
     private fun checkLicense() {
         if (!getSharedPreferences(USER_DATA, MODE_PRIVATE).contains(LICENSE_CODE)) {
             startActivity(Intent(this, LicenseActivity::class.java))

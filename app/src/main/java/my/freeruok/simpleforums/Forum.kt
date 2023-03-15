@@ -229,13 +229,15 @@ class AMForum : Forum() {
             } else {
                 // 解析楼层
                 val mainBody = dataObj.select(".t_f")
-                val content = mainBody[0].text()
+                val contentSrc = mainBody[0].text()
+                val (floor, content) = parseFloorAndContent(contentSrc)
                 val mediaItems = buildMediaItems(mainBody[0])
                 val (author) = dataObj.select(".authi").map { it.text() }
                 val (dateFmt) = dataObj.select("span[title]").map { it.text() }
                 Message(
                     tid = currentMessage.tid,
                     content = content,
+                    floor = floor,
                     author = author,
                     dateFmt = dateFmt,
                     mediaItems = mediaItems
@@ -244,6 +246,20 @@ class AMForum : Forum() {
         } else {
             Message()
         }
+    }
+
+    private val floors = mapOf("楼主" to 1, "沙发" to 2, "板凳" to 3, "地板" to 4)
+
+    // 爱盲论坛特殊处理， 返回楼层号和内容
+    private fun parseFloorAndContent(src: String): Pair<Int, String> {
+        val floor = floors.getOrDefault(
+            src.substring(0, 2),
+            Regex("\\d+").matchAt(src, 0)?.value?.toInt() ?: 0
+        )
+
+        val t = src.indexOf("说：")
+        val content = src.substring(t + 2)
+        return floor to content
     }
 }
 

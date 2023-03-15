@@ -2,3 +2,4 @@
 
 2023-03-13 添加收藏夹功能 弃用startActivityForResult和onActivityResult等过时API， 改用Activity Result API
 2023-03-15 添加导出为zip压缩包文件的功能， 修改Android 最低API为26
+2023-03-16 优化代码； 修正压缩包导出时出现的一些问题； 优化爱盲论坛的基本浏览体验； 更改目标API为32
