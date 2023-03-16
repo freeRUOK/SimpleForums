@@ -146,7 +146,10 @@ class PostActivity : AppCompatActivity() {
             "新发主题 - 来自： ${MainActivity.forum.name}"
         }
         val collectorButton = findViewById<Button>(R.id.more_button)
-        collectorButton.text = if (MainActivity.forum.currentMessage.isDatabase) {
+        MainActivity.forum.currentMessage.id =
+            MainActivity.messageIds.getOrDefault(MainActivity.forum.currentMessage.tid, 0L)
+
+        collectorButton.text = if (MainActivity.forum.currentMessage.id != 0L) {
             "更新收藏"
         } else {
             "收藏"
@@ -207,7 +210,10 @@ class PostActivity : AppCompatActivity() {
                                 }
 
 // 保存到数据库
-                                Util.addCollects(collectors)
+                                Util.addCollects(
+                                    collectors,
+                                    MainActivity.forum.currentMessage.id != 0L
+                                )
                             }
                         }
                         show()

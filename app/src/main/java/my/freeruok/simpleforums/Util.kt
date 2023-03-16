@@ -25,6 +25,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.zip.CRC32
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import kotlin.concurrent.thread
@@ -149,11 +150,28 @@ object Util {
         }
     }
 
+    // 载入所有的收藏夹id
+    fun loadCollectorIds() {
+        thread {
+            val results = Room.databaseBuilder(
+                App.context,
+                CollectorDatabase::class.java,
+                FORUMS_APP_DATABASE_NAME
+            ).build().messageDao().allIds()
+
+            MainActivity.messageIds = results.associate { it.tid to it.id }
+
+        }
+    }
+
     // 收藏夹新增一条记录
-    fun addCollects(messages: List<Message>) {
+    fun addCollects(messages: List<Message>, isUpdate: Boolean = false) {
         val dao = Room.databaseBuilder(
             App.context, CollectorDatabase::class.java, FORUMS_APP_DATABASE_NAME
         ).build()
+        if (isUpdate) {
+            dao.messageDao().remove(messages[0].tid)
+        }
         dao.messageDao().save(messages)
     }
 
@@ -203,7 +221,7 @@ object Util {
             }
 
             // 生成压缩包元数据
-            val invalidChars = Regex("[\"\\\\/?:;<>+=\\s]")
+            val invalidChars = Regex("[\"\\\\/?:;<>+=\\s\\*\\$\\^]")
             val zipContents = datas.values.map {
                 val mainFloor = it.removeAt(0)
 
@@ -231,13 +249,20 @@ object Util {
             ZipOutputStream(App.context.contentResolver.openOutputStream(uri)).use {
                 zipContents.forEach { zipList ->
                     zipList.forEach { zip ->
-                        it.putNextEntry(ZipEntry(zip.first))
+                        val ze = ZipEntry(zip.first)
+                        ze.size = zip.second.size.toLong()
+                        ze.time = Instant.now().epochSecond
+                        ze.crc = CRC32().run {
+                            update(zip.second)
+                            value
+                        }
+                        it.putNextEntry(ze)
                         it.write(zip.second)
+                        it.closeEntry()
                     }
                 }
                 it.finish()
             }
-
             shareCollector(uri, activity)
         }
     }

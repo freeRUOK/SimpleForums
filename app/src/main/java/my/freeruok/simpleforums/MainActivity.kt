@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
     // 当前论坛实力
     companion object {
         lateinit var forum: Forum
+        lateinit var messageIds: Map<Long, Long>
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -195,6 +196,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadForum() {
 // 初始化部分组件
         if (!this::contentList.isInitialized) {
+            Util.loadCollectorIds()
             val forumId = App.context.getSharedPreferences(USER_DATA, MODE_PRIVATE)
                 .getInt("forum_id", R.id.aimang_radio)
             forumRadioGroup = findViewById(R.id.forum_radio_group)

@@ -12,6 +12,10 @@ interface MessageDao {
     @Query("select * from $MESSAGE_TAB")
     fun all(): List<Message>
 
+    // 查询所有主题的id和tid
+    @Query("select * from $MESSAGE_TAB where floor == 0")
+    fun allIds(): List<Message>
+
     // 查询主题， 分页模式
     @Query("select * from $MESSAGE_TAB where view_count != 0 ORDER BY id DESC limit :offset, :maxNum")
     fun fastThread(offset: Int, maxNum: Int): MutableList<Message>
@@ -24,9 +28,9 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun save(messages: List<Message>)
 
-    // 删除一条记录， 使用默认实现
-    @Delete
-    fun remove(message: Message): Int
+    // 根据tid删除一条记录
+    @Query("delete from $MESSAGE_TAB where tid == :tid")
+    fun remove(tid: Long)
 
     // 清空当前数据表
     @Query("delete from $MESSAGE_TAB")
