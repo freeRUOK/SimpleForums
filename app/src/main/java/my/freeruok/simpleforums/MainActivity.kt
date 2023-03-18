@@ -35,7 +35,8 @@ class MainActivity : AppCompatActivity() {
     // 当前论坛实力
     companion object {
         lateinit var forum: Forum
-        val orderStrings = arrayOf("新发优先", "新回优先", "精华优先")
+        val orderStrings =
+            arrayOf(ORDER_MODE_NEW_THREAD, ORDER_MODE_LAST_THREAD, ORDER_MODE_ESSENCE_THREAD)
         lateinit var messageIds: Map<Long, Long>
     }
 
@@ -98,8 +99,11 @@ class MainActivity : AppCompatActivity() {
 // 底部网站被切换
         forumRadioGroup.setOnCheckedChangeListener { _, _ ->
             isDatabase = false
-            orderSpinner.contentDescription = forum.currentOrder
             loadForum()
+            val pos = orderStrings.indexOf(forum.currentOrder)
+            if (pos != -1) {
+                orderSpinner.setSelection(pos)
+            }
             forum.load(this, isDatabase = isDatabase)
         }
 
@@ -329,6 +333,5 @@ class MainActivity : AppCompatActivity() {
                     orderStrings
                 )
         }
-        orderSpinner.contentDescription = forum.currentOrder
     }
 }

@@ -141,7 +141,7 @@ class PostActivity : AppCompatActivity() {
         } else {
             "新发主题 - 来自： ${MainActivity.forum.name}"
         }
-        val speakButton = findViewById<Button>(R.id.search_button)
+        val speakButton = findViewById<Button>(R.id.start_search_button)
         speakButton.text = "语音朗读"
 
         val collectorButton = findViewById<Button>(R.id.more_button)

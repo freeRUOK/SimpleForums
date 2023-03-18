@@ -179,10 +179,16 @@ abstract class Forum {
     // 处理排序加载
     abstract val orderModes: Map<String, String>
     var currentOrder: String = loadOrderMode()
+        set(value) {
+            if (field != value) {
+                field = value
+                saveOrderMode()
+            }
+        }
 
     fun loadOrderMode(): String {
         return App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
-            .getString("$ORDER_MODE_KEY-$name", "新发优先") ?: ""
+            .getString("$ORDER_MODE_KEY-$name", ORDER_MODE_NEW_THREAD) ?: ""
     }
 
     fun saveOrderMode() {
@@ -201,7 +207,7 @@ class AMForum : Forum() {
     override val charsetName: String = "gbk"
 
     override val orderModes: Map<String, String> =
-        mapOf("新发优先" to "newthread", "新回优先" to "hotthread")
+        mapOf(ORDER_MODE_NEW_THREAD to "newthread", ORDER_MODE_LAST_THREAD to "hotthread")
 
     //* 生成Message对象， 在parse函数里调用， 这个函数可以说是整个parse函数的解析规则， 爱盲论坛
     override val build: (Any, Boolean) -> Message = { dataObj, isSub ->
@@ -289,7 +295,11 @@ class BMForum : Forum() {
         get() = "${baseURL}api/post/search?keyword=${keyword}&pageSize=20&pageNum=${pageNumber}"
 
     override val orderModes: Map<String, String> =
-        mapOf("新发优先" to "new", "新回优先" to "new-reply", "精华优先" to "essence")
+        mapOf(
+            ORDER_MODE_NEW_THREAD to "new",
+            ORDER_MODE_LAST_THREAD to "new-reply",
+            ORDER_MODE_ESSENCE_THREAD to "essence"
+        )
 
     override val threadQuery = ".content" to ".item"
     override val isMoveable: Boolean = true
@@ -576,7 +586,11 @@ open class QTForum : Forum() {
         get() = "${baseURL}search-index.htm"
 
     override val orderModes: Map<String, String> =
-        mapOf("新发优先" to "tid", "新回优先" to "lastpost", "精华优先" to "digest")
+        mapOf(
+            ORDER_MODE_NEW_THREAD to "tid",
+            ORDER_MODE_LAST_THREAD to "lastpost",
+            ORDER_MODE_ESSENCE_THREAD to "digest"
+        )
 
     // 强制登录
     override val isForce: Boolean = true

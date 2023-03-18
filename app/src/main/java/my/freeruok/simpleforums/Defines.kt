@@ -4,8 +4,10 @@
 package my.freeruok.simpleforums
 
 // 如果某个值在应用程序的多个部分重复使用应当在此处定义
-const val REQUEST_CODE_LOGIN = 1
-const val REQUEST_CODE_SEARCH = 2
+const val ORDER_MODE_NEW_THREAD = "最新"
+const val ORDER_MODE_LAST_THREAD = "最热"
+const val ORDER_MODE_ESSENCE_THREAD = "精华"
+
 const val KEYWORD_STR = "keyword"
 const val USER_DATA = "user-data"
 const val CONTENT_TYPE_JSON = "Application/json; Charset=UTF-8"
@@ -14,5 +16,4 @@ const val VIBRATE_SWITCH = "vibrate_switch"
 const val KEYWORDS = "keywords"
 const val FORUMS_APP_DATABASE_NAME = "forums_app_database.db"
 const val MESSAGE_TAB = "MESSAGE_TAB"
-const val APP_PATH = "app_path"
 const val ORDER_MODE_KEY = "order_mode_key"
