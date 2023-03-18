@@ -86,7 +86,8 @@ abstract class Forum {
         val url = if (subURL.isNotEmpty()) {
             subURL
         } else {
-            "${baseURL}/forum.php?mod=guide&view=newthread&page=$pageNumber"
+            val orderMode = orderModes.getOrDefault(currentOrder, "newthread")
+            "${baseURL}/forum.php?mod=guide&view=$orderMode&page=$pageNumber"
         }
         // 提交http请求
         val body = try {
@@ -174,6 +175,20 @@ abstract class Forum {
         }
         return listOf()
     }
+
+    // 处理排序加载
+    abstract val orderModes: Map<String, String>
+    var currentOrder: String = loadOrderMode()
+
+    fun loadOrderMode(): String {
+        return App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
+            .getString("$ORDER_MODE_KEY-$name", "新发优先") ?: ""
+    }
+
+    fun saveOrderMode() {
+        App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE).edit()
+            .putString("$ORDER_MODE_KEY-$name", currentOrder).apply()
+    }
 }
 
 //* 爱盲论坛： www.aimang.net
@@ -184,6 +199,9 @@ class AMForum : Forum() {
         get() = "${baseURL}search.php?mod=forum&searchid=114&orderby=lastpost&ascdesc=desc&searchsubmit=yes&page=${pageNumber}&kw=${keyword}"
 
     override val charsetName: String = "gbk"
+
+    override val orderModes: Map<String, String> =
+        mapOf("新发优先" to "newthread", "新回优先" to "hotthread")
 
     //* 生成Message对象， 在parse函数里调用， 这个函数可以说是整个parse函数的解析规则， 爱盲论坛
     override val build: (Any, Boolean) -> Message = { dataObj, isSub ->
@@ -270,6 +288,9 @@ class BMForum : Forum() {
     override val searchURL: String
         get() = "${baseURL}api/post/search?keyword=${keyword}&pageSize=20&pageNum=${pageNumber}"
 
+    override val orderModes: Map<String, String> =
+        mapOf("新发优先" to "new", "新回优先" to "new-reply", "精华优先" to "essence")
+
     override val threadQuery = ".content" to ".item"
     override val isMoveable: Boolean = true
     override val cookie: MyCookie? = MyCookie()
@@ -345,7 +366,8 @@ class BMForum : Forum() {
         val url = if (subURL.isNotEmpty()) {
             subURL
         } else {
-            "${baseURL}api/post/new?pageNum=${pageNumber}&pageSize=30"
+            val orderMode = orderModes.getOrDefault(currentOrder, "new")
+            "${baseURL}api/post/$orderMode?pageNum=${pageNumber}&pageSize=30"
         }
 
         val body = Util.fastHttp(url = url, isMoveable = isMoveable, cookie = cookie)
@@ -553,6 +575,9 @@ open class QTForum : Forum() {
     override val searchURL: String
         get() = "${baseURL}search-index.htm"
 
+    override val orderModes: Map<String, String> =
+        mapOf("新发优先" to "tid", "新回优先" to "lastpost", "精华优先" to "digest")
+
     // 强制登录
     override val isForce: Boolean = true
 
@@ -612,7 +637,8 @@ open class QTForum : Forum() {
         val url = if (subURL.isNotEmpty()) {
             subURL
         } else {
-            "${baseURL}index-index.htm"
+            val orderMode = orderModes.getOrDefault(currentOrder, "tid")
+            "${baseURL}index-index.htm?orderby=$orderMode"
         }
 
         val body = Util.fastHttp(url = url, querys = forms)

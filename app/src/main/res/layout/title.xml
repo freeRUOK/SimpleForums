@@ -9,6 +9,13 @@
     android:layout_weight="1"
     android:orientation="horizontal">
 
+    <Spinner
+        android:id="@+id/order_spaner"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:contentDescription="排序" />
+
     <TextView
         android:id="@+id/title"
         android:layout_width="0dp"

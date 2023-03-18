@@ -77,11 +77,7 @@ class PostActivity : AppCompatActivity() {
 
 // 输入框的文本改变的时候根据情况切换发布回复按钮的可用状态
         postText.addTextChangedListener {
-            if (it != null && it.length >= 5) {
-                sendButton.isEnabled = true
-            } else {
-                sendButton.isEnabled = false
-            }
+            sendButton.isEnabled = it != null && it.length >= 5
         }
 
 // 回复帖子
@@ -145,6 +141,9 @@ class PostActivity : AppCompatActivity() {
         } else {
             "新发主题 - 来自： ${MainActivity.forum.name}"
         }
+        val speakButton = findViewById<Button>(R.id.search_button)
+        speakButton.text = "语音朗读"
+
         val collectorButton = findViewById<Button>(R.id.more_button)
         MainActivity.forum.currentMessage.id =
             MainActivity.messageIds.getOrDefault(MainActivity.forum.currentMessage.tid, 0L)

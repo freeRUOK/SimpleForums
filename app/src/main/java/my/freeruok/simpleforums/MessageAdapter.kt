@@ -11,14 +11,13 @@ import android.view.ViewGroup
 import android.widget.BaseAdapter
 import android.widget.TextView
 
-class MessageAdapter(val messages: MutableList<Message>) : BaseAdapter() {
-
+class MessageAdapter(private val messages: MutableList<Message>) : BaseAdapter() {
     override fun getCount(): Int {
         return messages.size
     }
 
     override fun getItem(position: Int): Any {
-        return messages.get(position)
+        return messages[position]
     }
 
     override fun getItemId(position: Int): Long {
@@ -32,7 +31,7 @@ class MessageAdapter(val messages: MutableList<Message>) : BaseAdapter() {
         if (convertView == null) {
 // 加载布局
             view = LayoutInflater.from(App.context).inflate(R.layout.thread_list, parent, false)
-            viewHolder = ViewHolder(view.findViewById<TextView>(R.id.item_text))
+            viewHolder = ViewHolder(view.findViewById(R.id.item_text))
             view.tag = viewHolder
         } else {
 // 使用已经缓存的布局， 改善应用程序的性能
@@ -40,7 +39,7 @@ class MessageAdapter(val messages: MutableList<Message>) : BaseAdapter() {
             view = convertView
             viewHolder = view.tag as ViewHolder
         }
-        val message = messages.get(position)
+        val message = messages[position]
         val fmt =
             if (message.postCount != 0) {
                 message.formatThread()

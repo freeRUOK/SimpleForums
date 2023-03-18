@@ -28,11 +28,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var forumRadioGroup: RadioGroup
     private lateinit var statusText: TextView
     lateinit var swipeRefresh: SwipeRefreshLayout
+    lateinit var orderSpinner: Spinner
+
     private var isDatabase: Boolean = false
 
     // 当前论坛实力
     companion object {
         lateinit var forum: Forum
+        val orderStrings = arrayOf("新发优先", "新回优先", "精华优先")
         lateinit var messageIds: Map<Long, Long>
     }
 
@@ -81,7 +84,6 @@ class MainActivity : AppCompatActivity() {
             registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) {
             }
 
-
 // 处理用户协议
         checkLicense()
 // 初始化相关工具包， 比如震动等
@@ -96,6 +98,7 @@ class MainActivity : AppCompatActivity() {
 // 底部网站被切换
         forumRadioGroup.setOnCheckedChangeListener { _, _ ->
             isDatabase = false
+            orderSpinner.contentDescription = forum.currentOrder
             loadForum()
             forum.load(this, isDatabase = isDatabase)
         }
@@ -112,6 +115,8 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.start_search_button).setOnClickListener {
             searchActivityResultLauncher.launch(Intent(this, SearchActivity::class.java))
         }
+        // 设置排序切换
+        setOrderMode()
     }
 
     // 设置顶部状态栏
@@ -197,8 +202,8 @@ class MainActivity : AppCompatActivity() {
 // 初始化部分组件
         if (!this::contentList.isInitialized) {
             Util.loadCollectorIds()
-            val forumId = App.context.getSharedPreferences(USER_DATA, MODE_PRIVATE)
-                .getInt("forum_id", R.id.aimang_radio)
+            val pref = App.context.getSharedPreferences(USER_DATA, MODE_PRIVATE)
+            val forumId = pref.getInt("forum_id", R.id.aimang_radio)
             forumRadioGroup = findViewById(R.id.forum_radio_group)
             contentList = findViewById(R.id.content_list)
             contentListText = findViewById(R.id.content_list_text)
@@ -294,5 +299,36 @@ class MainActivity : AppCompatActivity() {
         if (!getSharedPreferences(USER_DATA, MODE_PRIVATE).contains(LICENSE_CODE)) {
             startActivity(Intent(this, LicenseActivity::class.java))
         }
+    }
+
+    private fun setOrderMode() {
+        if (!this::orderSpinner.isInitialized) {
+            orderSpinner = findViewById<Spinner>(R.id.order_spaner)
+            orderSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long
+                ) {
+                    forum.currentOrder = orderStrings[position]
+                    orderSpinner.contentDescription = orderStrings[position]
+                    forum.load(this@MainActivity, isDatabase = isDatabase)
+                    forum.saveOrderMode()
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) {
+                    TODO("Not yet implemented")
+                }
+            }
+
+            orderSpinner.adapter =
+                ArrayAdapter<String>(
+                    this,
+                    android.R.layout.simple_expandable_list_item_1,
+                    orderStrings
+                )
+        }
+        orderSpinner.contentDescription = forum.currentOrder
     }
 }
