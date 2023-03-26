@@ -6,6 +6,7 @@ package my.freeruok.simpleforums
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.Context
+import com.danikula.videocache.HttpProxyCacheServer
 
 /// 全局上下文
 /// 方便在应用程序的任何部分获取上下文对象
@@ -19,11 +20,19 @@ class App : Application() {
         // 阻止重复刷新/加载数据
         @Volatile
         var isLoading: Boolean = false
+        lateinit var mediaProxy: HttpProxyCacheServer
+    }
+
+    private val mediaProxyServer: HttpProxyCacheServer by lazy {
+        HttpProxyCacheServer.Builder(context)
+            .maxCacheSize(1024 * 1024 * 1024)
+            .build()
     }
 
     override fun onCreate() {
         super.onCreate()
         context = applicationContext
         MOD_PRIVATE = MODE_PRIVATE
+        mediaProxy = mediaProxyServer
     }
 }

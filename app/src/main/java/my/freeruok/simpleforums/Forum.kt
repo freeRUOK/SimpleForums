@@ -8,8 +8,9 @@
 */
 package my.freeruok.simpleforums
 
-
+import android.util.Log
 import com.google.android.exoplayer2.MediaItem
+import okhttp3.Headers
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -56,7 +57,7 @@ abstract class Forum {
 
     //* 是否是移动设备
     open val isMoveable: Boolean = false
-    open val cookie: MyCookie? = null
+    open val cookie: CookiesStorage = CookiesStorage()
 
     //* 用于数据解析的时候提供值， 比如css类名， json字段名等等， 两队四个够用
     //*这里默认是爱盲论坛的状态, 其他论坛根据情况重写 即可
@@ -91,21 +92,26 @@ abstract class Forum {
         }
         // 提交http请求
         val body = try {
-            Util.fastHttp(url, isMoveable = isMoveable, cookie = cookie)
+            Util.fastBinaryContent(url, isMoveable = isMoveable, cookie = cookie)
         } catch (e: Exception) {
             byteArrayOf()
         }
         // 开始解析html文档
+
         if (body.isNotEmpty()) {
+
             //选择解析参考值
             val (contentQuery, subQuery) = if (isSub) {
                 postQuery
+            } else if (keyword.isNotEmpty()) {
+                "#threadlist" to ".pbw"
             } else {
                 threadQuery
             }
             // 解析第一层， 比如主题列表， 楼层列表等等
             val elements =
                 Jsoup.parse(body.toString(Charset.forName(charsetName))).select(contentQuery)
+
             // 解析第二层， 具体每一个主题或楼层
             if (elements.isNotEmpty()) {
                 return elements[0].select(subQuery).map {
@@ -120,13 +126,15 @@ abstract class Forum {
 
     // 解析某一主题
     open fun parsePosts(pageNumber: Int): List<Message> {
-        val url = "${baseURL}${currentMessage.url}&page=${pageNumber}"
+        val url =
+            "${baseURL}forum.php?mod=viewthread&tid=${currentMessage.tid}&extra=&page=${pageNumber}"
+        Log.d("post_url", url)
         return parse(subURL = url, isSub = true)
     }
 
     protected var keyword: String = ""
     abstract val searchURL: String
-    fun parseSearch(kw: String): List<Message> {
+    open fun parseSearch(kw: String): List<Message> {
         val urlStr = URLEncoder.encode(kw, charsetName)
         if (keyword != urlStr) {
             pageNumber = 1
@@ -157,11 +165,11 @@ abstract class Forum {
                 MediaItem.Builder().run {
                     val url = it.attr("src")
                     if (url.isNotEmpty()) {
-                        setUri(url)
+                        setUri(App.mediaProxy.getProxyUrl(url))
                     } else {
                         val source = it.select("source")
                         if (source.isNotEmpty()) {
-                            setUri(source[0].attr("src"))
+                            setUri(App.mediaProxy.getProxyUrl(source[0].attr("src")))
                         }
                     }
                     if (it.text().isNotEmpty()) {
@@ -202,7 +210,8 @@ class AMForum : Forum() {
     override val name: String = "爱盲论坛"
     override val baseURL: String = "https://www.aimang.net/"
     override val searchURL: String
-        get() = "${baseURL}search.php?mod=forum&searchid=114&orderby=lastpost&ascdesc=desc&searchsubmit=yes&page=${pageNumber}&kw=${keyword}"
+        get() = "${baseURL}search.php?mod=forum&searchid=${searchId}&orderby=lastpost&ascdesc=desc&searchsubmit=yes&kw=${keyword}&page=${pageNumber}"
+    private var searchId: String = ""
 
     override val charsetName: String = "gbk"
 
@@ -219,23 +228,13 @@ class AMForum : Forum() {
                     val a = e[0]
                     val content = a.text()
                     val url = a.attr("href")
-
-                    val tid = try {
-                        (Regex("tid=(\\d+)").find(url)?.groupValues ?: listOf(
-                            "0",
-                            "0"
-                        ))[1].toLong()
-                    } catch (e: Exception) {
-                        0L
-                    }
-
+                    val tid: Long = parseTid(url)
                     val (author, lastPost) = dataObj.select("cite").map { it.text() }
                     val (dateFmt, _, lastDateFmt) = dataObj.select("em").map { it.text() }
                     val (num) = dataObj.select(".num")
                     val (post) = num.select("a").map { it.text().toInt() + 1 }
                     val (view) = num.select("em").map { it.text().toInt() }
                     // 构造Message对象返回
-
                     Message(
                         tid = tid,
                         content = content,
@@ -248,7 +247,7 @@ class AMForum : Forum() {
                         viewCount = view
                     )
                 } else {
-                    Message()
+                    buildSearch(dataObj)
                 }
             } else {
                 // 解析楼层
@@ -272,6 +271,58 @@ class AMForum : Forum() {
         }
     }
 
+    // 解析爱盲论坛搜索结果， 用正则表达式简化了
+    private fun buildSearch(ele: Element): Message {
+        if (keyword.isEmpty()) {
+            return Message()
+        }
+        return try {
+            val (h3) = ele.select(".xs3")
+            val (a) = h3.select("a[title]")
+            val url = a.attr("href")
+            val tid = parseTid(url)
+            val title = a.attr("title")
+            val result =
+                Regex("(.*)\\s作者：(\\S+)\\s发表时间\\:(.*)\\s浏览：(\\d+)次\\s回复：(\\d+)\\s最后回复：(\\S+)\\s最后回复时间\\:(.*)").find(
+                    title
+                )
+            val values = if (result != null) {
+                result.groupValues.subList(0, 4) to result.groupValues.subList(4, 8)
+            } else {
+                listOf<String>() to listOf<String>()
+            }
+            val (_, content, author, dateLine_fmt) = values.first
+            val (viewCount, postCount, lastPost, lastDateLine_fmt) = values.second
+
+            Message(
+                tid = tid,
+                url = url,
+                content = content,
+                author = author,
+                dateFmt = dateLine_fmt,
+                lastPost = lastPost,
+                lastDateFmt = lastDateLine_fmt,
+                viewCount = viewCount.toInt(),
+                postCount = postCount.toInt()
+            )
+        } catch (e: Exception) {
+            Message()
+        }
+    }
+
+    // 解析帖子tid
+    private fun parseTid(url: String): Long {
+        val tid: Long = try {
+            (Regex("tid=(\\d+)").find(url)?.groupValues ?: listOf(
+                "0",
+                "0"
+            ))[1].toLong()
+        } catch (e: Exception) {
+            0L
+        }
+        return tid
+    }
+
     private val floors = mapOf("楼主" to 1, "沙发" to 2, "板凳" to 3, "地板" to 4)
 
     // 爱盲论坛特殊处理， 返回楼层号和内容
@@ -284,6 +335,45 @@ class AMForum : Forum() {
         val t = src.indexOf("说：")
         val content = src.substring(t + 2)
         return floor to content
+    }
+
+    override fun parseSearch(kw: String): List<Message> {
+        val urlStr = URLEncoder.encode(kw, charsetName)
+        if (keyword != urlStr) {
+            pageNumber = 1
+            keyword = urlStr
+            val url = "${baseURL}search.php?searchsubmit=yes"
+            val forms = mapOf<String, Any>(
+                "mod" to "forum",
+                "srchtype" to "title",
+                "srchtxt" to keyword,
+                "srhfid" to ""
+            )
+            val response = Util.fastResponse(
+                url,
+                querys = forms,
+                isRedirect = false
+            )
+            val req=response.request.body.toString()
+            Log.d("request", req)
+            if (response.code == 302) {
+                searchId = parseSearchId(response.headers)
+            }
+        }
+        return parse(subURL = searchURL, isSub = false)
+    }
+
+    // 从http头里解析searchid值
+    private fun parseSearchId(headers: Headers): String {
+        val url = headers["location"]
+        if (url != null) {
+            Log.d("url", url)
+            val result = Regex("searchid=(\\S+)&").find(url)
+            if (result != null) {
+                return result.groupValues[1]
+            }
+        }
+        return ""
     }
 }
 
@@ -303,7 +393,6 @@ class BMForum : Forum() {
 
     override val threadQuery = ".content" to ".item"
     override val isMoveable: Boolean = true
-    override val cookie: MyCookie? = MyCookie()
 
     // 帮忙社区用户登录
     override fun login(name: String, password: String): Boolean {
@@ -317,12 +406,12 @@ class BMForum : Forum() {
             "ticket" to ""
         )
         val body =
-            Util.fastHttp(
+            Util.fastBinaryContent(
                 url = url,
                 querys = forms,
                 isMoveable = true,
                 contentType = CONTENT_TYPE_JSON,
-                cookie = MyCookie()
+                cookie = cookie
             )
         // 错误检查
         if (body.isEmpty()) {
@@ -346,10 +435,10 @@ class BMForum : Forum() {
         val headers = mapOf(
             "Authorization" to auth
         )
-        val body = Util.fastHttp(
+        val body = Util.fastBinaryContent(
             url = "${baseURL}api/user",
             isMoveable = true,
-            cookie = MyCookie(),
+            cookie = CookiesStorage(),
             headers = headers
         )
         // 错误检查
@@ -380,7 +469,7 @@ class BMForum : Forum() {
             "${baseURL}api/post/$orderMode?pageNum=${pageNumber}&pageSize=30"
         }
 
-        val body = Util.fastHttp(url = url, isMoveable = isMoveable, cookie = cookie)
+        val body = Util.fastBinaryContent(url = url, isMoveable = isMoveable, cookie = cookie)
         if (body.isNotEmpty()) {
             val jsonObj = JSONObject(body.toString(Charset.forName(charsetName)))
             if (jsonObj.getInt("code") == 0) {
@@ -449,7 +538,7 @@ class BMForum : Forum() {
             "postId" to currentMessage.tid,
             "top" to false
         )
-        val body = Util.fastHttp(
+        val body = Util.fastBinaryContent(
             url = url,
             querys = forms,
             contentType = CONTENT_TYPE_JSON,
@@ -471,7 +560,7 @@ class BMForum : Forum() {
 
     // 获取论坛所有板块
     override fun section(): Array<Section> {
-        val body = Util.fastHttp(url = "${baseURL}/api/section")
+        val body = Util.fastBinaryContent(url = "${baseURL}/api/section")
         if (body.isNotEmpty()) {
             val resText = body.toString(Charset.forName(charsetName))
             val jsonObj = JSONObject(resText)
@@ -522,7 +611,7 @@ class BMForum : Forum() {
             "attachmentPrice" to -1
         )
         val url = "${baseURL}api/post"
-        val body = Util.fastHttp(
+        val body = Util.fastBinaryContent(
             url = url,
             querys = forms,
             headers = mapOf("Authorization" to userAuth),
@@ -563,7 +652,7 @@ class BMForum : Forum() {
                     try {
                         val mi = MediaItem.Builder().run {
                             setTag(dat.getString(kw))
-                            setUri(dat.getString("url"))
+                            setUri(App.mediaProxy.getProxyUrl(dat.getString("url")))
                             build()
                         }
                         results.add(mi)
@@ -617,7 +706,8 @@ open class QTForum : Forum() {
             },
             secKey
         )
-        val body = Util.fastHttp(url = baseURL + "user-login.htm", querys = httpForms + forms)
+        val body =
+            Util.fastBinaryContent(url = baseURL + "user-login.htm", querys = httpForms + forms)
         return if (body.isNotEmpty()) {
             //* 解析json数据， 参看蜻蜓社区返回的相关json数据
             val jsonObj = JSONObject(body.toString(Charset.forName(charsetName)))
@@ -655,7 +745,7 @@ open class QTForum : Forum() {
             "${baseURL}index-index.htm?orderby=$orderMode"
         }
 
-        val body = Util.fastHttp(url = url, querys = forms)
+        val body = Util.fastBinaryContent(url = url, querys = forms)
         if (body.isNotEmpty()) {
             val jsonObj = JSONObject(body.toString(Charset.forName(charsetName)))
             if (jsonObj.getInt("status") == 1) {
@@ -725,7 +815,7 @@ open class QTForum : Forum() {
             "auth" to userAuth,
             secKey
         )
-        val body = Util.fastHttp(url = url, querys = httpForms + forms)
+        val body = Util.fastBinaryContent(url = url, querys = httpForms + forms)
         if (body.isNotEmpty()) {
             val jsonObj = JSONObject(body.toString(Charset.forName(charsetName)))
             if (jsonObj.getInt("status") == 1)
@@ -745,7 +835,10 @@ open class QTForum : Forum() {
     override fun section(): Array<Section> {
         val forms = mapOf("auth" to userAuth)
         val body =
-            Util.fastHttp(url = "${baseURL}index-forumlist.htm", querys = httpForms + forms)
+            Util.fastBinaryContent(
+                url = "${baseURL}index-forumlist.htm",
+                querys = httpForms + forms
+            )
         if (body.isNotEmpty()) {
             val resText = body.toString(Charset.forName(charsetName))
             val jsonObj = JSONObject(resText)
@@ -794,7 +887,7 @@ open class QTForum : Forum() {
             secKey
         )
         val url = "${baseURL}post-thread.htm"
-        val body = Util.fastHttp(url = url, querys = httpForms + forms)
+        val body = Util.fastBinaryContent(url = url, querys = httpForms + forms)
         if (body.isNotEmpty()) {
             val resText = body.toString(Charset.forName(charsetName))
 

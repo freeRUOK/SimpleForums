@@ -19,6 +19,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 import org.json.JSONObject
 import org.jsoup.Jsoup
 import java.time.Instant
@@ -31,15 +32,16 @@ import java.util.zip.ZipOutputStream
 import kotlin.concurrent.thread
 
 object Util {
-    // 提交http请求
-    fun fastHttp(
+    // 提交http请求， 返回http响应
+    fun fastResponse(
         url: String,
         headers: Map<String, String> = mapOf(),
         querys: Map<String, Any> = mapOf(),
         isMoveable: Boolean = false,
-        cookie: MyCookie? = null,
+        isRedirect: Boolean = false,
+        cookie: CookiesStorage? = null,
         contentType: String = ""
-    ): ByteArray {
+    ): Response {
         val request = Request.Builder().run {
             url(url)
             addHeader(
@@ -57,7 +59,9 @@ object Util {
                     JSONObject(querys).toString().toRequestBody(contentType.toMediaType())
                 } else {
                     FormBody.Builder().run {
-                        querys.forEach { add(it.key, it.value.toString()) }
+                        querys.forEach {
+                            addEncoded(it.key, it.value.toString())
+                        }
                         build()
                     }
                 })
@@ -65,13 +69,34 @@ object Util {
             build()
         }
         val client = OkHttpClient.Builder().run {
+            followRedirects(isRedirect)
             if (cookie != null) {
                 cookieJar(cookie)
             }
             build()
         }
-        val response = client.newCall(request).execute()
+        return client.newCall(request).execute()
+    }
 
+    // 提交http请求， 返回二进制byte数组
+    fun fastBinaryContent(
+        url: String,
+        headers: Map<String, String> = mapOf(),
+        querys: Map<String, Any> = mapOf(),
+        isMoveable: Boolean = false,
+        isRedirect: Boolean = false,
+        cookie: CookiesStorage? = null,
+        contentType: String = ""
+    ): ByteArray {
+        val response = fastResponse(
+            url,
+            headers = headers,
+            querys = querys,
+            isMoveable = isMoveable,
+            isRedirect = isRedirect,
+            cookie = cookie,
+            contentType = contentType
+        )
         return if (response.isSuccessful) {
             response.body?.bytes() ?: byteArrayOf()
         } else {
