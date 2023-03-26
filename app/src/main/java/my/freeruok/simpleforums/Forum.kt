@@ -354,7 +354,7 @@ class AMForum : Forum() {
                 querys = forms,
                 isRedirect = false
             )
-            val req=response.request.body.toString()
+            val req = response.request.body.toString()
             Log.d("request", req)
             if (response.code == 302) {
                 searchId = parseSearchId(response.headers)
