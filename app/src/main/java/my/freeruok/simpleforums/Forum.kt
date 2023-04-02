@@ -8,9 +8,9 @@
 */
 package my.freeruok.simpleforums
 
-import android.util.Log
 import com.google.android.exoplayer2.MediaItem
 import okhttp3.Headers
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -18,6 +18,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import java.net.URLEncoder
 import java.nio.charset.Charset
+import java.time.Instant
 
 //* 所有论坛类的超类
 abstract class Forum {
@@ -49,6 +50,14 @@ abstract class Forum {
     fun loadUser() {
         val (_, _, domain) = baseURL.split('/').map { it.replace(".", "_") }
         val pref = App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
+        if (baseURL == "https://www.aimang.net/") {
+            val authCookie = CookiesStorage().loadForRequest(baseURL.toHttpUrl())
+                .find { it.name.contains("_auth") }
+            val curTime = Instant.now().epochSecond
+            if (authCookie != null && authCookie.expiresAt <= curTime) {
+                return
+            }
+        }
         userName = pref.getString("${domain}_name", "") ?: ""
         userAuth = pref.getString("${domain}_auth", "") ?: ""
     }
@@ -60,7 +69,7 @@ abstract class Forum {
     open val cookie: CookiesStorage = CookiesStorage()
 
     //* 用于数据解析的时候提供值， 比如css类名， json字段名等等， 两队四个够用
-    //*这里默认是爱盲论坛的状态, 其他论坛根据情况重写 即可
+//*这里默认是爱盲论坛的状态, 其他论坛根据情况重写 即可
     open val threadQuery = "#threadlist" to "tbody"
     open val postQuery = "#postlist" to ".plhin"
 
@@ -73,11 +82,30 @@ abstract class Forum {
 
     //* 用户登录默认实现
     open fun login(name: String, password: String): Boolean {
+        val url =
+            "${baseURL}member.php?mod=logging&action=login&loginsubmit=yes&handlekey=login&loginhash=LeDDv&inajax=1"
+        val forms = mapOf<String, Any>(
+            "username" to URLEncoder.encode(name, charsetName),
+            "password" to password,
+            "cookietime" to "2592000"
+        )
+        val response = Util.fastResponse(url, querys = forms, cookie = CookiesStorage())
+        if (response.isSuccessful) {
+            val content = response.body?.bytes() ?: byteArrayOf()
+            val resText = String(content, Charset.forName(charsetName))
+            val result = Regex("username\\'\\:\\'(\\S+?)\\'").find(resText)
+            if (result != null) {
+                userName = result.groupValues[1]
+                userAuth = "aimang_net_login" // 此值无意义， 随便填充完事
+                saveUser(userName, userAuth)
+                return true
+            }
+        }
         return false
     }
 
     //* 主题帖解析器默认实现， 这里是爱盲论坛
-    //* 默认解析最新主题
+//* 默认解析最新主题
     open fun parse(
         subURL: String = "",
         isSub: Boolean = false,
@@ -97,9 +125,7 @@ abstract class Forum {
             byteArrayOf()
         }
         // 开始解析html文档
-
         if (body.isNotEmpty()) {
-
             //选择解析参考值
             val (contentQuery, subQuery) = if (isSub) {
                 postQuery
@@ -109,9 +135,12 @@ abstract class Forum {
                 threadQuery
             }
             // 解析第一层， 比如主题列表， 楼层列表等等
-            val elements =
-                Jsoup.parse(body.toString(Charset.forName(charsetName))).select(contentQuery)
-
+            val htmlDoc = Jsoup.parse(body.toString(Charset.forName(charsetName)))
+            val elements = htmlDoc.select(contentQuery)
+            if (isSub) {
+                val (form) = htmlDoc.select("#fastpostform").map { it }
+                postForm = form
+            }
             // 解析第二层， 具体每一个主题或楼层
             if (elements.isNotEmpty()) {
                 return elements[0].select(subQuery).map {
@@ -128,7 +157,6 @@ abstract class Forum {
     open fun parsePosts(pageNumber: Int): List<Message> {
         val url =
             "${baseURL}forum.php?mod=viewthread&tid=${currentMessage.tid}&extra=&page=${pageNumber}"
-        Log.d("post_url", url)
         return parse(subURL = url, isSub = true)
     }
 
@@ -143,8 +171,33 @@ abstract class Forum {
         return parse(subURL = searchURL, isSub = false, "keyword" to keyword)
     }
 
+    // 保存当前主题的回帖表单备用
+    private var postForm = Jsoup.parse("<form action=\"\"></form>").root()
+
     // 回帖， 爱盲论坛
     open fun post(content: String): Message {
+        val url = "${baseURL}${postForm.attr("action")}"
+        if (url == baseURL) {
+            return Message()
+        }
+        val (formHash) = postForm.select("input[name=formhash]").map { it.attr("value") }
+        val forms = mapOf<String, Any>(
+            "message" to URLEncoder.encode(content, charsetName),
+            "posttime" to Instant.now().epochSecond.toString(),
+            "formhash" to formHash,
+            "usesig" to 1,
+            "subject" to ""
+        )
+        val response =
+            Util.fastResponse(url = url, querys = forms, cookie = cookie, isRedirect = false)
+        if (response.code == 301) {
+            return Message(
+                content = content,
+                author = userName,
+                floor = currentMessage.postCount,
+                dateFmt = "刚刚"
+            )
+        }
         return Message()
     }
 
@@ -195,8 +248,12 @@ abstract class Forum {
         }
 
     fun loadOrderMode(): String {
+        /*
         return App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
             .getString("$ORDER_MODE_KEY-$name", ORDER_MODE_NEW_THREAD) ?: ""
+            */
+        return ""
+
     }
 
     fun saveOrderMode() {
@@ -352,10 +409,11 @@ class AMForum : Forum() {
             val response = Util.fastResponse(
                 url,
                 querys = forms,
-                isRedirect = false
+                isRedirect = false,
+                cookie = cookie
             )
             val req = response.request.body.toString()
-            Log.d("request", req)
+
             if (response.code == 302) {
                 searchId = parseSearchId(response.headers)
             }
@@ -367,7 +425,6 @@ class AMForum : Forum() {
     private fun parseSearchId(headers: Headers): String {
         val url = headers["location"]
         if (url != null) {
-            Log.d("url", url)
             val result = Regex("searchid=(\\S+)&").find(url)
             if (result != null) {
                 return result.groupValues[1]
