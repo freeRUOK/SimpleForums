@@ -203,11 +203,54 @@ abstract class Forum {
 
     // 获取论坛的所有板块， 爱盲论坛
     open fun section(): Array<Section> {
+        val buf = Util.fastBinaryContent(url = "${baseURL}forum.php", cookie = cookie)
+        if (buf.isNotEmpty()) {
+            val resText = String(buf, Charset.forName(charsetName))
+            return mutableListOf<Section>().apply {
+                Jsoup.parse(resText).select(".fl_tb").forEach { ele ->
+                    val sl = ele.select("h2").map {
+                        val (a) = it.select("a")
+                        val result = Regex("fid=(\\d+)").find(a.attr("href"))?.groupValues
+                        if (result != null) {
+                            val id = result[1].toInt()
+                            Section(name = it.text(), id = id)
+                        } else {
+                            Section(name = it.text(), id = 0)
+                        }
+                    }
+                    addAll(sl)
+                }
+            }.toTypedArray()
+        }
         return arrayOf()
     }
 
     // 发布新主题, 成功返回主题ID， 失败返回0， 爱盲论坛
     open fun thread(title: String, message: String, section: MutableSection): Int {
+        var url = "${baseURL}forum.php?mod=forumdisplay&fid=${section.first.id}"
+        var buf = Util.fastBinaryContent(url = url, cookie = cookie)
+        if (buf.isNotEmpty()) {
+            var resText = String(buf, Charset.forName(charsetName))
+            val (formElement) = Jsoup.parse(resText).select("#fastpostform")
+            url = "${baseURL}${formElement.attr("action")}"
+            val (formHash) = formElement.select("input[name=formhash]").map { it.attr("value") }
+            val forms = mapOf<String, Any>(
+                "subject" to URLEncoder.encode(title, charsetName),
+                "message" to URLEncoder.encode(message, charsetName),
+                "formhash" to formHash,
+                "posttime" to Instant.now().epochSecond,
+                "usesig" to 1,
+            )
+            val response =
+                Util.fastResponse(url = url, querys = forms, cookie = cookie, isRedirect = false)
+            if (response.code == 301) {
+                val result =
+                    Regex("tid=(\\d+)").find(response.headers["location"].toString())?.groupValues
+                if (result != null) {
+                    return result[1].toInt()
+                }
+            }
+        }
         return 0
     }
 
