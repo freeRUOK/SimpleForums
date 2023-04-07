@@ -4,6 +4,7 @@
 
 package my.freeruok.simpleforums
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.*
@@ -23,6 +24,11 @@ class PostActivity : AppCompatActivity() {
     lateinit var postAdapter: MessageAdapter
     lateinit var postListText: TextView
     lateinit var swipeLayout: SwipeRefreshLayout
+
+    // 保存当前焦点的帖子实力
+    companion object {
+        lateinit var currentPost: Message
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +56,13 @@ class PostActivity : AppCompatActivity() {
     }
 
     private fun setSendEventListener() {
+        //项目被长按，  打开当前文章的资源URL 列表
+        postList.setOnItemLongClickListener { _, _, pos, _ ->
+            currentPost = posts[pos]
+            startActivity(Intent(this, ResourceActivity::class.java))
+            false
+        }
+
         if (!MainActivity.forum.isOnline) {
             return
         }

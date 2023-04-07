@@ -6,6 +6,7 @@ package my.freeruok.simpleforums
 import android.content.Intent
 import android.view.View
 import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.PlayerControlView
 import java.security.MessageDigest
 import kotlin.concurrent.thread
@@ -136,7 +137,12 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
             }
 
             // 添加媒体
-            val mediaSources = messages.filter { it.mediaItems.isNotEmpty() }
+            val mediaSources =
+                messages.filter {
+                    it.resources.any { res ->
+                        res.value == TextProcesser.TextType.MEDIA_URL
+                    }
+                }
             if (mediaSources.isNotEmpty()) {
                 // 隐藏多余的播放布局上的view
                 activity.findViewById<View>(com.google.android.exoplayer2.ui.R.id.exo_repeat_toggle).visibility =
@@ -155,8 +161,11 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
                 }
                 // 添加媒体
                 mediaSources.forEach {
-                    it.mediaItems.forEach { item ->
-                        activity.mPlayer.addMediaItem(item)
+                    it.resources.forEach { item ->
+                        if (item.value == TextProcesser.TextType.MEDIA_URL) {
+                            val mediaURL = App.mediaProxy.getProxyUrl(item.key)
+                            activity.mPlayer.addMediaItem(MediaItem.fromUri(mediaURL))
+                        }
                     }
                 }
             }

@@ -7,7 +7,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Ignore
 import androidx.room.PrimaryKey
-import com.google.android.exoplayer2.MediaItem
+
 import org.jsoup.Jsoup
 
 // room和网站的数据类
@@ -42,7 +42,7 @@ data class Message(
     @ColumnInfo(name = "last_post")
     var lastPost: String = "",
     @Ignore
-    var mediaItems: List<MediaItem> = listOf()
+    var resources: Map<String, TextProcesser.TextType> = mapOf()
 ) {
     fun formatThread(): String {
         return StringBuilder().apply {

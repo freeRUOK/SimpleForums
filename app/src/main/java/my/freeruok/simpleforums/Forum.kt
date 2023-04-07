@@ -8,7 +8,6 @@
 */
 package my.freeruok.simpleforums
 
-import com.google.android.exoplayer2.MediaItem
 import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
@@ -228,9 +227,9 @@ abstract class Forum {
     // 发布新主题, 成功返回主题ID， 失败返回0， 爱盲论坛
     open fun thread(title: String, message: String, section: MutableSection): Int {
         var url = "${baseURL}forum.php?mod=forumdisplay&fid=${section.first.id}"
-        var buf = Util.fastBinaryContent(url = url, cookie = cookie)
+        val buf = Util.fastBinaryContent(url = url, cookie = cookie)
         if (buf.isNotEmpty()) {
-            var resText = String(buf, Charset.forName(charsetName))
+            val resText = String(buf, Charset.forName(charsetName))
             val (formElement) = Jsoup.parse(resText).select("#fastpostform")
             url = "${baseURL}${formElement.attr("action")}"
             val (formHash) = formElement.select("input[name=formhash]").map { it.attr("value") }
@@ -255,29 +254,25 @@ abstract class Forum {
     }
 
     // 生成媒体项目
-    open fun buildMediaItems(mediaData: Any): List<MediaItem> {
-        if (mediaData is Element) {
-            return mediaData.select("audio,video").map {
-                MediaItem.Builder().run {
+    open fun buildResources(mediaData: Any): MutableMap<String, TextProcesser.TextType> {
+        val iText = mediaData.toString()
+        val results = mutableMapOf<String, TextProcesser.TextType>().apply {
+            this.putAll(TextProcesser.parseText(iText).associate { it.second to it.first })
+            if (mediaData is Element) {
+                mediaData.select("audio,video").forEach {
                     val url = it.attr("src")
                     if (url.isNotEmpty()) {
-                        setUri(App.mediaProxy.getProxyUrl(url))
+                        this[url] = TextProcesser.TextType.MEDIA_URL
                     } else {
                         val source = it.select("source")
                         if (source.isNotEmpty()) {
-                            setUri(App.mediaProxy.getProxyUrl(source[0].attr("src")))
+                            this[source[0].attr("src")] = TextProcesser.TextType.MEDIA_URL
                         }
                     }
-                    if (it.text().isNotEmpty()) {
-                        setTag(it.text())
-                    } else {
-                        setTag(name)
-                    }
-                    build()
                 }
             }
         }
-        return listOf()
+        return results
     }
 
     // 处理排序加载
@@ -354,7 +349,7 @@ class AMForum : Forum() {
                 val mainBody = dataObj.select(".t_f")
                 val contentSrc = mainBody[0].text()
                 val (floor, content) = parseFloorAndContent(contentSrc)
-                val mediaItems = buildMediaItems(mainBody[0])
+                val resources = buildResources(mainBody[0])
                 val (author) = dataObj.select(".authi").map { it.text() }
                 val (dateFmt) = dataObj.select("span[title]").map { it.text() }
                 Message(
@@ -363,7 +358,7 @@ class AMForum : Forum() {
                     floor = floor,
                     author = author,
                     dateFmt = dateFmt,
-                    mediaItems = mediaItems
+                    resources = resources
                 )
             }
         } else {
@@ -455,8 +450,6 @@ class AMForum : Forum() {
                 isRedirect = false,
                 cookie = cookie
             )
-            val req = response.request.body.toString()
-
             if (response.code == 302) {
                 searchId = parseSearchId(response.headers)
             }
@@ -622,7 +615,7 @@ class BMForum : Forum() {
                     author = dataObj.getString("userName"),
                     dateFmt = dataObj.getString("createTime"),
                     floor = dataObj.getInt("floor") + 1,
-                    mediaItems = buildMediaItems(dataObj)
+                    resources = buildResources(dataObj)
                 )
             }
         } else {
@@ -728,34 +721,33 @@ class BMForum : Forum() {
         return 0
     }
 
-    override fun buildMediaItems(mediaData: Any): List<MediaItem> {
+    override fun buildResources(mediaData: Any): MutableMap<String, TextProcesser.TextType> {
         if (mediaData is JSONObject) {
-            val mediaItems = mutableListOf<MediaItem>()
+            val resources = mutableMapOf<String, TextProcesser.TextType>()
             val ele = Jsoup.parse(mediaData.getString("body")).root()
-            mediaItems += super.buildMediaItems(ele)
+            resources += super.buildResources(ele)
             arrayOf("audioList", "videoList").forEach {
                 if (mediaData.has(it)) {
-                    mediaItems += parseMediaData(mediaData.getJSONArray(it), "fileName", "desc")
+                    resources += parseMediaData(mediaData.getJSONArray(it), "fileName", "desc")
                 }
             }
-            return mediaItems
+            return resources
         }
-        return listOf()
+        return mutableMapOf()
     }
 
-    private fun parseMediaData(mediaDate: JSONArray, vararg keywords: String): List<MediaItem> {
-        val results = mutableListOf<MediaItem>()
+    private fun parseMediaData(
+        mediaDate: JSONArray,
+        vararg keywords: String
+    ): MutableMap<String, TextProcesser.TextType> {
+        val results = mutableMapOf<String, TextProcesser.TextType>()
         for (i in 0 until mediaDate.length()) {
             val dat = mediaDate.getJSONObject(i)
             if (!dat.getBoolean("isPaid")) {
                 for (kw in keywords) {
                     try {
-                        val mi = MediaItem.Builder().run {
-                            setTag(dat.getString(kw))
-                            setUri(App.mediaProxy.getProxyUrl(dat.getString("url")))
-                            build()
-                        }
-                        results.add(mi)
+                        val url = dat.getString("url")
+                        results.put(url, TextProcesser.TextType.MEDIA_URL)
                         break
                     } catch (e: JSONException) {
                         continue
@@ -890,7 +882,7 @@ open class QTForum : Forum() {
                 )
             } else {
                 val content = dataObj.getString("message")
-                val mediaItems = buildMediaItems(Jsoup.parse(content).root())
+                val resources = buildResources(Jsoup.parse(content).root())
                 Message(
                     tid = dataObj.getLong("tid"),
                     content = content,
@@ -898,7 +890,7 @@ open class QTForum : Forum() {
                     floor = dataObj.getInt("floor"),
                     dateLine = dataObj.getLong("dateline"),
                     dateFmt = dataObj.getString("dateline_fmt"),
-                    mediaItems = mediaItems
+                    resources = resources
                 )
             }
         } else {
