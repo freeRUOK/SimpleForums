@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/thread_menu_speak"
+        android:title="语音朗读" />
+
+    <item
+        android:id="@+id/threadmenu_copy_url"
+        android:title="拷贝主题网址" />
+
+</menu>

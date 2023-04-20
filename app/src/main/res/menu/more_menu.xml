@@ -11,6 +11,10 @@
     <item
         android:id="@+id/more_thread"
         android:title="发布新主题" />
+    <item
+
+        android:id="@+id/more_config"
+        android:title="设置" />
 
     <item
         android:id="@+id/more_open"

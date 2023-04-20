@@ -9,10 +9,7 @@
     android:orientation="vertical"
     tools:context=".MainActivity">
 
-    <include layout="@layout/hide_bar" />
-
     <include layout="@layout/title" />
-
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh"
@@ -34,6 +31,11 @@
         android:layout_height="0dp"
         android:layout_weight="8"
         android:text="正在加载……请稍后...." />
+
+    <include
+        android:id="@+id/tts_control_view"
+        layout="@layout/text_to_speak_control_view"
+        android:visibility="gone" />
 
     <RadioGroup
         android:id="@+id/forum_radio_group"

@@ -5,6 +5,7 @@ package my.freeruok.simpleforums
 
 import android.content.Intent
 import android.view.View
+import android.view.ViewGroup
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.PlayerControlView
@@ -163,7 +164,7 @@ fun Forum.loadPosts(activity: PostActivity, isReload: Boolean = true) {
                 mediaSources.forEach {
                     it.resources.forEach { item ->
                         if (item.value == TextProcesser.TextType.MEDIA_URL) {
-                            val mediaURL = App.mediaProxy.getProxyUrl(item.key)
+                            val mediaURL = item.key
                             activity.mPlayer.addMediaItem(MediaItem.fromUri(mediaURL))
                         }
                     }
@@ -189,4 +190,21 @@ fun checkOrHintInput(input: String, hint: String = "Input Error"): Boolean {
     }
     Util.toast(hint)
     return true
+}
+
+fun Forum.bindTTS(view: ViewGroup) {
+    if (view.visibility == View.GONE) {
+        TTSEngine.init()
+        view.visibility = View.VISIBLE
+    } else {
+        TTSEngine.clear()
+    }
+    thread {
+        var i = 1
+        while (TTSEngine.textCount < this.currentMessage.postCount) {
+            val strs = this.parsePosts(i).map { it.formatPost() }
+            TTSEngine.addAll(strs)
+            i++
+        }
+    }
 }

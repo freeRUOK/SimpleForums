@@ -8,6 +8,7 @@
 */
 package my.freeruok.simpleforums
 
+import androidx.appcompat.app.AppCompatActivity
 import okhttp3.Headers
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
@@ -40,7 +41,7 @@ abstract class Forum {
     // 保存用户名和授权码
     fun saveUser(name: String, auth: String) {
         val (_, _, domain) = baseURL.split('/').map { it.replace(".", "_") }
-        App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
+        App.context.getSharedPreferences(USER_DATA, AppCompatActivity.MODE_PRIVATE)
             .edit().putString("${domain}_name", name).putString("${domain}_auth", auth)
             .apply()
     }
@@ -48,7 +49,7 @@ abstract class Forum {
     // 恢复用户名和授权码
     fun loadUser() {
         val (_, _, domain) = baseURL.split('/').map { it.replace(".", "_") }
-        val pref = App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
+        val pref = App.context.getSharedPreferences(USER_DATA, AppCompatActivity.MODE_PRIVATE)
         if (baseURL == "https://www.aimang.net/") {
             val authCookie = CookiesStorage().loadForRequest(baseURL.toHttpUrl())
                 .find { it.name.contains("_auth") }
@@ -285,17 +286,13 @@ abstract class Forum {
             }
         }
 
-    fun loadOrderMode(): String {
-        /*
-        return App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE)
+    private fun loadOrderMode(): String {
+        return App.context.getSharedPreferences(USER_DATA, AppCompatActivity.MODE_PRIVATE)
             .getString("$ORDER_MODE_KEY-$name", ORDER_MODE_NEW_THREAD) ?: ""
-            */
-        return ""
-
     }
 
     fun saveOrderMode() {
-        App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE).edit()
+        App.context.getSharedPreferences(USER_DATA, AppCompatActivity.MODE_PRIVATE).edit()
             .putString("$ORDER_MODE_KEY-$name", currentOrder).apply()
     }
 }

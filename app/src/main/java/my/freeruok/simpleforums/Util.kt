@@ -117,9 +117,10 @@ object Util {
         if (!this::vibrator.isInitialized) {
             vibrator = App.context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
-        vibrateSwitch = App.context.getSharedPreferences(USER_DATA, App.MOD_PRIVATE).getBoolean(
-            VIBRATE_SWITCH, true
-        )
+        vibrateSwitch =
+            App.context.getSharedPreferences(USER_DATA, AppCompatActivity.MODE_PRIVATE).getBoolean(
+                VIBRATE_SWITCH, true
+            )
     }
 
     // 震动

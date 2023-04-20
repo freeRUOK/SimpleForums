@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.IntentSenderRequest
@@ -29,7 +30,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var statusText: TextView
     lateinit var swipeRefresh: SwipeRefreshLayout
     lateinit var orderSpinner: Spinner
-
     private var isDatabase: Boolean = false
 
     // 当前论坛实力
@@ -89,8 +89,7 @@ class MainActivity : AppCompatActivity() {
         checkLicense()
 // 初始化相关工具包， 比如震动等
         Util.init()
-// 设置顶部状态栏
-        setHideBar()
+
 // 载入网站设置
         loadForum()
 // 设置listView无数据的情况下展示的view
@@ -123,22 +122,10 @@ class MainActivity : AppCompatActivity() {
         setOrderMode()
     }
 
-    // 设置顶部状态栏
-    private fun setHideBar() {
-        val vibrateSwitch = findViewById<Switch>(R.id.vibrate_switch)
-// 开启或关闭震动开关
-        vibrateSwitch.setOnCheckedChangeListener { _, isChecked ->
-            Util.vibrateSwitch = isChecked
-        }
-        vibrateSwitch.isChecked = Util.vibrateSwitch
-    }
-
     // 设置内容列表的UI
     private fun setContentList() {
 // 下拉刷新
         swipeRefresh.setOnRefreshListener {
-// 显示顶部状态栏
-            Util.showView(this, findViewById(R.id.main_hide_bar), 15)
 // 清空搜索关键字
             if (keyword.isNotEmpty()) {
                 keyword = ""
@@ -153,6 +140,13 @@ class MainActivity : AppCompatActivity() {
             forum.currentMessage = threadList[position]
             val intent = Intent(this, PostActivity::class.java)
             startActivity(intent)
+        }
+
+        contentList.setOnItemLongClickListener { parent, view, position, id ->
+            forum.currentMessage = threadList[position]
+            val ttsControlView = findViewById<ViewGroup>(R.id.tts_control_view)
+            popupMoreMenu(ttsControlView)
+            true
         }
     }
 
@@ -185,12 +179,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     // 前台活动不可见的情况下
-    override fun onPause() {
-        super.onPause()
+    override fun onStop() {
+        super.onStop()
 // 保存犯罪现场， 比如当前的网站， 震动开关等
         val id = forumRadioGroup.checkedRadioButtonId
         App.context.getSharedPreferences(USER_DATA, MODE_PRIVATE).edit().putInt("forum_id", id)
-            .putBoolean(VIBRATE_SWITCH, Util.vibrateSwitch)
             .apply()
     }
 
@@ -231,8 +224,13 @@ class MainActivity : AppCompatActivity() {
 
     // 处理更多菜单
     private fun popupMoreMenu(view: View) {
+        val menuId = if (view.id == R.id.more_button) {
+            R.menu.more_menu
+        } else {
+            R.menu.thread_menu
+        }
         val popupMoreMenu = PopupMenu(this, view)
-        popupMoreMenu.menuInflater.inflate(R.menu.more_menu, popupMoreMenu.menu)
+        popupMoreMenu.menuInflater.inflate(menuId, popupMoreMenu.menu)
 // 某个菜单被选择
         popupMoreMenu.setOnMenuItemClickListener {
             when (it.itemId) {
@@ -259,6 +257,9 @@ class MainActivity : AppCompatActivity() {
                             )
                         )
                     }
+                }
+                R.id.more_config -> {
+                    startActivity(Intent(this, ConfigActivity::class.java))
                 }
 // 用浏览器打开网站
                 R.id.more_open -> {
@@ -291,6 +292,13 @@ class MainActivity : AppCompatActivity() {
                         }
                         show()
                     }
+                }
+                R.id.thread_menu_speak -> {
+                    forum.bindTTS(view as ViewGroup)
+                    setTTSControlView()
+                }
+                R.id.threadmenu_copy_url -> {
+                    Util.toast("已拷贝")
                 }
             }
             false
@@ -334,4 +342,31 @@ class MainActivity : AppCompatActivity() {
                 )
         }
     }
+
+    fun setTTSControlView() {
+        arrayOf(
+            R.id.tts_control_back,
+            R.id.tts_control_play,
+            R.id.tts_control_next,
+            R.id.tts_control_stop
+        ).forEach {
+            findViewById<Button>(it).setOnClickListener(onTTSControlClick)
+        }
+    }
+
+    val onTTSControlClick: (View?) -> Unit = { v ->
+        if (v != null) {
+            when (v.id) {
+                R.id.tts_control_play -> TTSEngine.speak()
+                R.id.tts_control_back -> TTSEngine.speak(-1)
+                R.id.tts_control_next -> TTSEngine.speak(1)
+                R.id.tts_control_stop -> {
+                    TTSEngine.shutdown()
+                    findViewById<ViewGroup>(R.id.tts_control_view).visibility = View.GONE
+                }
+            }
+        }
+    }
+
+
 }
