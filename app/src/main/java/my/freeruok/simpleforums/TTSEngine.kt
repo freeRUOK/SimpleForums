@@ -112,16 +112,13 @@ object TTSEngine {
         if (result == 0) {
             if (tar == 0 && engine.isSpeaking) {
                 engine.stop()
-                isPause = true
             } else {
                 if (currentTailIndex == 0) {
                     setCurrentTailIndex()
-                    startWatch()
                 }
                 // 朗读内容
                 val text = strings[pos].substring(currentHeadIndex, currentTailIndex)
                 engine.speak(text, TextToSpeech.QUEUE_FLUSH, bundle, "$pos")
-                isPause = false
             }
         } else {
             speak(
