@@ -1,4 +1,4 @@
-/* MyCookie.kt */
+/* CookieStorage.kt */
 // * 2651688427@qq.com
 // 实现网站cookie
 package my.freeruok.simpleforums

@@ -6,6 +6,12 @@
     android:orientation="vertical"
     tools:context=".ConfigActivity">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text="通用设置" />
+
     <Switch
         android:id="@+id/vibrate_switch"
         android:layout_width="match_parent"
@@ -15,11 +21,24 @@
         android:textOff="震动关闭"
         android:textOn="震动开启" />
 
-    <Spinner
-        android:id="@+id/media_cache_max_size_spinner"
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:contentDescription="最大媒体缓存大小: " />
+        android:text="朗读设置" />
+
+    <Spinner
+        android:id="@+id/tts_engine_spinner"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:contentDescription="语音引擎" />
+
+    <Button
+        android:id="@+id/tts_speak_test"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:text="朗读测试" />
 
 </LinearLayout>

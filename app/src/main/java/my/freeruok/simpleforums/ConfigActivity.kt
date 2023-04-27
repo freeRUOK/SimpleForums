@@ -1,9 +1,11 @@
+/* ConfigActivity.kt */
+// * 2651688427
+// 设置activity
+
 package my.freeruok.simpleforums
 
 import android.os.Bundle
-import android.view.View
-import android.widget.AdapterView
-import android.widget.ArrayAdapter
+import android.widget.Button
 import android.widget.Spinner
 import android.widget.Switch
 import androidx.appcompat.app.AppCompatActivity
@@ -24,26 +26,32 @@ class ConfigActivity : AppCompatActivity() {
                 .putBoolean(VIBRATE_SWITCH, isChecked).apply()
         }
         vibrateSwitch.isChecked = Util.vibrateSwitch
-
-        val spinner = findViewById<Spinner>(R.id.media_cache_max_size_spinner)
-        spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                parent: AdapterView<*>?,
-                view: View?,
-                position: Int,
-                id: Long
-            ) {
-                val value: Long = position.toLong() * 256 * 1024 * 1024
-                getSharedPreferences(USER_DATA, MODE_PRIVATE).edit()
-                    .putLong(MEDIA_CACHE_MAX_SIZE, value).apply()
-            }
-
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-                TODO("Not yet implemented")
+        if (TTSEngine.isSuccess) {
+            setTTSConfig()
+        } else {
+            TTSEngine.init {
+                setTTSConfig()
             }
         }
-        val maxSizes = arrayOf("不缓存", "256mb", "512mb", "768mb", "1gb")
-        spinner.adapter =
-            ArrayAdapter(this, android.R.layout.simple_expandable_list_item_1, maxSizes)
+
+        findViewById<Button>(R.id.tts_speak_test).setOnClickListener {
+            TTSEngine.speak("Hello World\n 会当凌绝顶 一览众山小")
+        }
+    }
+
+    private fun setTTSConfig() {
+        val engineSpinner = findViewById<Spinner>(R.id.tts_engine_spinner)
+        val pref = getSharedPreferences(USER_DATA, MODE_PRIVATE)
+        val engineName = pref.getString(TTS_ENGINE_NAME, "默认引擎") ?: "默认引擎"
+
+        val engines = TTSEngine.ttsEngineNames
+
+        setSpinner(this, engineSpinner, engines.map { it.label }, engineName) {
+            val engine = engines[it]
+            TTSEngine.shutdown()
+            TTSEngine.init(engine.name)
+            engineSpinner.contentDescription = engine.label
+            pref.edit().putString(TTS_ENGINE_NAME, engine.name).apply()
+        }
     }
 }

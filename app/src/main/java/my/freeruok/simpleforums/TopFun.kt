@@ -6,6 +6,10 @@ package my.freeruok.simpleforums
 import android.content.Intent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
+import android.widget.Spinner
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.ui.PlayerControlView
@@ -207,4 +211,24 @@ fun Forum.bindTTS(view: ViewGroup) {
             i++
         }
     }
+}
+
+fun setSpinner(
+    activity: AppCompatActivity,
+    spinner: Spinner,
+    datas: List<String>,
+    contentDescription: String,
+    onItemSelectListener: (Int) -> Unit
+) {
+    spinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+        override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+            onItemSelectListener(position)
+        }
+
+        override fun onNothingSelected(parent: AdapterView<*>?) {
+            TODO("Not yet implemented")
+        }
+    }
+    spinner.contentDescription = contentDescription
+    spinner.adapter = ArrayAdapter(activity, android.R.layout.simple_expandable_list_item_1, datas)
 }
