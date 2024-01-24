@@ -7,8 +7,8 @@
 
 - [爱盲论坛](https://www.aimang.net/)
 - [帮忙社区](http://bbs.abm365.cn/)
-- [蜻蜓社区](http://www.qt.hk/)
-- [争渡网](http://www.zd.hk/)
+- [蜻蜓社区](https://www.qt.hk/)
+- [争渡网](https://www.zd.hk/)
 
   上述网站可以使用的功能包括：
 

@@ -759,7 +759,7 @@ class BMForum : Forum() {
 //* 蜻蜓社区： www.qt.hk
 open class QTForum : Forum() {
     override val name: String = "蜻蜓社区"
-    override val baseURL: String = "http://www.qt.hk/"
+    override val baseURL: String = "https://www.qt.hk/"
     override val searchURL: String
         get() = "${baseURL}search-index.htm"
 
@@ -992,7 +992,7 @@ open class QTForum : Forum() {
 //* 争渡网： www.zd.hk 直接从蜻蜓社区继承即可
 class ZDForum : QTForum() {
     override val name: String = "争渡网"
-    override val baseURL: String = "http://www.zd.hk/"
+    override val baseURL: String = "https://www.zd.hk/"
     override val httpForms = mapOf(
         "appkey" to "488f3f5f9d",
         "format" to "json"
